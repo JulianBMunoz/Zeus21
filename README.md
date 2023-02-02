@@ -4,11 +4,34 @@ Zeus21 encodes the effective model for the 21-cm power spectrum and global signa
 
 Zeus21 (Zippy Early-Universe Solver for 21-cm) pairs well with data from [HERA](https://reionization.org/), but can be used for any 21-cm inference or prediction. Current capabilities include finding the 21-cm power spectrum (at a broad range of k and z), the global signal, IGM temperatures (Tk, Ts, Tcolor), neutral fraction xHI, Lyman-alpha fluxes, and the evolution of the SFRD; all across cosmic dawn z=5-35. Zeus21 can use three different astrophysical models, one of which emulates 21cmFAST.
 
-For a tutorial see `docs/`. Full documentation in XXXX. 
+For a tutorial see `docs/`. Full documentation in XXXX. Here is an example power spectrum and global signal (you can run it yourself with the tutorial.
+
+<p align="center">
+<img src="docs/PspecandGlobal_Zeus21.png" width=50% height=50%>
+</p>
 
 ## Installation
 
-Pip etc
+You can download and install this package by doing:
+
+```
+git clone https://github.com/JulianBMunoz/Zeus21.git Zeus21
+cd Zeus21/
+pip install .
+```
+
+that should take care of all dependencies. If you have issues with cache'd versions of packages you can add `--no-cache-dir` at the end of `pip install .`. 
+
+**NOTE:** You may run into problems when pip-installing `classy` (the Python wrapper of `CLASS`). If so, their installation guide is [here](https://github.com/lesgourg/class_public/wiki/Installation), but in a gist here are the steps (remember to work in your favorite conda env, and to modify the Makefile to your `gcc` as needed:
+
+```
+git clone https://github.com/lesgourg/class_public.git class
+cd class/
+make
+cd python/
+python setup.py install --user
+```
+
 
 ## Citation
 
