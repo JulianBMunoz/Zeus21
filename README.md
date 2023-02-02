@@ -15,8 +15,8 @@ For a tutorial see `docs/`. Full documentation in XXXX. Here is an example power
 You can download and install this package by doing:
 
 ```
-git clone https://github.com/JulianBMunoz/Zeus21.git Zeus21
-cd Zeus21/
+git clone https://github.com/julianbmunoz/zeus21.git zeus21
+cd zeus21/
 pip install .
 ```
 
