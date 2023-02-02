@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='zeus-21',
+    name='zeus21',
           version='0.1dev',
           description='Zeus21: An analytic 21-cm code for cosmic dawn and EoR.',
           url='https://github.com/JulianBMunoz/Zeus21',
@@ -16,6 +16,7 @@ setup(
           install_requires=[
            "numpy",
            "scipy",
+           "mcfit",
            "classy",
        ],
 )
