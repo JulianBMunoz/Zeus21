@@ -20,9 +20,9 @@ cd zeus21/
 pip install .
 ```
 
-that should take care of all dependencies. If you have issues with cache'd versions of packages you can add `--no-cache-dir` at the end of `pip install .`. 
+that should take care of all dependencies (remember to work in your favorite conda env). If you have issues with cache'd versions of packages you can add `--no-cache-dir` at the end of `pip install .`. 
 
-**NOTE:** You may run into problems when pip-installing `classy` (the Python wrapper of `CLASS`). If so, their installation guide is [here](https://github.com/lesgourg/class_public/wiki/Installation), but in a gist here are the steps (remember to work in your favorite conda env, and to modify the Makefile to your `gcc` as needed:
+**NOTE:** You may run into problems when pip-installing `classy` (the Python wrapper of `CLASS`). If so, their installation guide is [here](https://github.com/lesgourg/class_public/wiki/Installation), but in a gist here are the steps (modifying the Makefile to your `gcc` as needed) are:
 
 ```
 git clone https://github.com/lesgourg/class_public.git class
