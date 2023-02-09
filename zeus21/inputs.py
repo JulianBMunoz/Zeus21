@@ -49,7 +49,7 @@ class Cosmo_Parameters:
         #other params in the input
         self.kmax_CLASS = CosmoParams_input.kmax_CLASS
         self.zmax_CLASS = CosmoParams_input.zmax_CLASS
-        self.zmin_CLASS = 5.0 #when to start the HMF calcs., not an input strictly
+        self.zmin_CLASS = 4.0 #when to start the HMF calcs., not an input strictly
         self.Flag_emulate_21cmfast = CosmoParams_input.Flag_emulate_21cmfast #whether to emulate 21cmFAST in HMF, LyA, and X-ray opacity calculations
 
         #derived params
