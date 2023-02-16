@@ -213,7 +213,7 @@ class Astro_Parameters:
 
         indexbelow = 0.14 #if one of them zero worry about normalization
         normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
-        indexabove = -6.0
+        indexabove = -8.0
         normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
 
         nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
@@ -227,7 +227,7 @@ class Astro_Parameters:
             elif (currnu >= nucut):  #between LyB and Continuum
                 result[inu] = normabove * (currnu/nucut)**indexabove
             else:
-                print("Error in SED_approx, whats the frequency Kenneth?")
+                print("Error in SED_LyA, whats the frequency Kenneth?")
 
 
         return result/nucut #extra 1/nucut because dnu, normalizes the integral

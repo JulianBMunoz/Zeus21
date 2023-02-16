@@ -234,6 +234,15 @@ class get_T21_coefficients:
         if(constants.C2_RENORMALIZATION_FLAG==True):
             self.coeff2LyAzpRR*= 1.0 + (self.gamma_index2D-1.0)*self.sigmaofRtab**2
             self.coeff2XzpRR*= 1.0 + (self.gamma_index2D-1.0)*self.sigmaofRtab**2
+            _corrfactorEulerian = 1.0 + (self.gamma_index2D-1.0)*self.sigmaofRtab**2
+            _corrfactorEulerian=_corrfactorEulerian.T
+            _corrfactorEulerian[0:Cosmo_Parameters.indexminNL] = _corrfactorEulerian[Cosmo_Parameters.indexminNL] #for R<R_NL we just fix it to the RNL value, as we do for the correlation function. We could cut the sum but this keeps those scales albeit approximately
+            self.coeff2LyAzpRR*= _corrfactorEulerian.T
+            self.coeff2XzpRR*= _corrfactorEulerian.T
+            ## alternative expression below: if you take (1+d)~exp(d) throughout.
+            #self.coeff2LyAzpRR *= np.exp(self.sigmaofRtab**2/2.0 * (2.0 *self.gamma_index2D-1.0) )
+            #self.coeff2XzpRR *= np.exp(self.sigmaofRtab**2/2.0 * (2.0 *self.gamma_index2D-1.0) )
+            
 
         self._GammaXray = self.coeff1Xzp*np.sum(self.coeff2XzpRR,axis=1) #notice units are modified (eg 1/H) so it's simplest to sum
 
