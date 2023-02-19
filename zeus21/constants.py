@@ -76,7 +76,7 @@ Tstar_21 = 0.0682 #T* in K for the 21cm transition
 A10_21 = 2.85e-15 #1/s, Einstein 10 coeff for HI
 
 
-#whether to renormalize the C2 oefficients (appendix XXXX in XXXX)
+#whether to renormalize the C2 oefficients (appendix in 2302.08506)
 C2_RENORMALIZATION_FLAG = 1 - FLAG_FORCE_LINEAR_CF
 
 
