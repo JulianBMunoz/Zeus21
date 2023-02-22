@@ -37,5 +37,5 @@ python setup.py install --user
 ## Citation
 
 If you find this code useful please cite:
-[An Effective Model for the Cosmic-Dawn 21-cm Signal] (https://arxiv.org/abs/2302.08506)
+[An Effective Model for the Cosmic-Dawn 21-cm Signal](https://arxiv.org/abs/2302.08506)
 and include a link to [this Github](https://github.com/JulianBMunoz/Zeus21).
