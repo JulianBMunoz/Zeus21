@@ -1,6 +1,5 @@
 pytest
 numpy
-classy
 scipy
 sphinx
 myst_parser
