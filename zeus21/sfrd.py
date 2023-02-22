@@ -39,7 +39,7 @@ class get_T21_coefficients:
         self.SFRD_avg = np.zeros_like(self.zintegral)
         self.SFRDbar2D = np.zeros((self.Nzintegral, Cosmo_Parameters.NRs)) #SFR at z=zprime when averaged over a radius R (so up to a higher z)
         self.gamma_index2D = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma delta)
-        self.niondot_avg = np.zeros_like(self.zintegral) #\dot nion at each z (\int d(SFRD)/dM *fesc(M) dM)/rhobaryon
+        self.niondot_avg = np.zeros_like(self.zintegral) #\dot nion at each z (int d(SFRD)/dM *fesc(M) dM)/rhobaryon
         self.gamma_Niondot_index2D = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma delta)
 
         self.ztabRsmoo = np.zeros_like(self.SFRDbar2D) #z's that correspond to each Radius R around each zp
@@ -242,7 +242,7 @@ class get_T21_coefficients:
             ## alternative expression below: if you take (1+d)~exp(d) throughout.
             #self.coeff2LyAzpRR *= np.exp(self.sigmaofRtab**2/2.0 * (2.0 *self.gamma_index2D-1.0) )
             #self.coeff2XzpRR *= np.exp(self.sigmaofRtab**2/2.0 * (2.0 *self.gamma_index2D-1.0) )
-            
+
 
         self._GammaXray = self.coeff1Xzp*np.sum(self.coeff2XzpRR,axis=1) #notice units are modified (eg 1/H) so it's simplest to sum
 
@@ -354,7 +354,7 @@ class get_T21_coefficients:
             self.Qfactrecomb = np.exp(-2/3 * _recexp * pow(1+self.zintegral,3/2))
             self.Qion_avg = 1/self.Qfactrecomb*np.cumsum(self.coeffQzp[::-1] * self.Qfactrecomb[::-1] * self.niondot_avg[::-1])[::-1]
 
-        if(Cosmo_Parameters.Flag_emulate_21cmfast==True): #21cmfast instead uses nion (rather than niondot and integrating). We can emulate that here. there nion = niondot * t_star/H(z) [see Park+19]. In that case we can iteratively solve for Q=nion - nrecom(Q), where nrecom = \int dt Q/t_recom to correct for recombinations. Easier than ODE.
+        if(Cosmo_Parameters.Flag_emulate_21cmfast==True): #21cmfast instead uses nion (rather than niondot and integrating). We can emulate that here. there nion = niondot * t_star/H(z) [see Park+19]. In that case we can iteratively solve for Q=nion - nrecom(Q), where nrecom = int dt Q/t_recom to correct for recombinations. Easier than ODE.
 
             #self._nion = np.cumsum(self.coeffQzp[::-1] * self.niondot_avg[::-1])[::-1]
             self._nion = self.niondot_avg * Astro_Parameters.tstar/cosmology.Hubinvyr(Cosmo_Parameters,self.zintegral)
