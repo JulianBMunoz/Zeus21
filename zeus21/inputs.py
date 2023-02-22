@@ -195,7 +195,7 @@ class Astro_Parameters:
 
 
     def SED_XRAY(self, En):
-        "SED of our Xray sources, normalized to integrate to 1 from E0_xray to Emax_xray (\int dE E * SED(E), and E*SED is the power-law with index alpha_xray, so the output is divided by 1/E at the end to return number). Takes energy En in eV"
+        "SED of our Xray sources, normalized to integrate to 1 from E0_xray to Emax_xray (int dE E * SED(E), and E*SED is the power-law with index alpha_xray, so the output is divided by 1/E at the end to return number). Takes energy En in eV"
         if np.abs(self.alpha_xray+1.0) < 0.01: #log
             norm = 1.0/np.log(self.Emax_xray_norm/self.E0_xray) / self.E0_xray
         else:
@@ -206,7 +206,7 @@ class Astro_Parameters:
 
 
     def SED_LyA(self, nu_in):
-        "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (\int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
+        "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
 
         nucut = constants.freqLyB #above and below this freq different power laws
         amps = np.array([0.68,0.32]) #Approx following the stellar spectra of BL05. Normalized to unity
