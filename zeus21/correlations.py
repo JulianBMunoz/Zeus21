@@ -265,8 +265,11 @@ class Power_Spectra:
         else:
             print('Error, have to choose an RSD mode! RSD_MODE')
 
+        if(constants.FLAG_DO_BUBBLES):
+            self._betaxion = - 1.0/T21_coefficients.xHI_avg * np.heaviside(constants.ZMAX_Bubbles - T21_coefficients.zintegral, 0.5) # xion = 1 - xHI, only for z<ZMAX_Bubbles. 1/xHI_avg since P_xHI has units of xHI
+        else:
+            self._betaxion = np.zeros_like(T21_coefficients.xHI_avg) # do not do EoR bubbles at all
 
-        self._betaxion = - 1.0/T21_coefficients.xHI_avg * constants.FLAG_DO_BUBBLES * np.heaviside(constants.ZMAX_Bubbles - T21_coefficients.zintegral, 0.5) # xion = 1 - xHI, only for z<ZMAX_Bubbles. 1/xHI_avg since P_xHI has units of xHI
 
 
         #To first order: dT21/T0 = (1+cT * betaTad) * delta_m + betaT * deltaTX + betaxa * delta xa + betaxion * delta xion
