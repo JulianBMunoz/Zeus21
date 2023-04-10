@@ -168,6 +168,7 @@ class get_T21_coefficients:
 
                 XrayEnergyintegral = np.sum(JX_coeffs * sigma_times_en * _Energylist * Astro_Parameters.dlogEnergy, axis=0)
                 # Note that dEnergy = Energylist * dlogEnergy , since the table is logspaced
+                #TODO: Make into a np.trapz
 
                 self.coeff2XzpRR[izp, iR] = RR * self.dlogRR * self.SFRDbar2D[izp, iR] * XrayEnergyintegral * (1.0 / constants.Mpctocm**2.0) * constants.normLX_CONST
                 # Units of coeff2XzpRR are erg/s, since normLX*SFR = erg/s (after sigma goes from cm^2 to Mpc^2)

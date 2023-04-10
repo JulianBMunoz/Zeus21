@@ -79,9 +79,10 @@ class Cosmo_Parameters:
 
         #build the interpolators from CLASS - so we don't have to call it again
         self._ztabinchi = np.linspace(0.0, 100. , 10000) #cheap so do a lot
-        self._chitab = ClassCosmo.z_of_r(self._ztabinchi)[0]
+        self._chitab, self._Hztab = ClassCosmo.z_of_r(self._ztabinchi)
         self.zfofRint = interp1d(self._chitab, self._ztabinchi)
         self.chiofzint = interp1d(self._ztabinchi,self._chitab)
+        self.Hofzint = interp1d(self._ztabinchi,self._Hztab)
 
         _thermo = ClassCosmo.get_thermodynamics()
         self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])

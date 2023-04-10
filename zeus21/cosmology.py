@@ -27,19 +27,21 @@ def runclass(CosmologyIn):
     return ClassCosmo
 
 
-def Hub(Cosmo_Parameters, z):
-    # Hubble(z) in km/s/Mpc
-    return Cosmo_Parameters.h_fid * 100 * np.sqrt(Cosmo_Parameters.OmegaM * pow(1 + z, 3.0) + Cosmo_Parameters.OmegaR * pow(1 + z, 4.0) + Cosmo_Parameters.OmegaL)
+# def Hub(Cosmo_Parameters, z):
+#     # Hubble(z) in km/s/Mpc -- UNUSED
+#     return Cosmo_Parameters.h_fid * 100 * np.sqrt(Cosmo_Parameters.OmegaM * pow(1 + z, 3.0) + Cosmo_Parameters.OmegaR * pow(1 + z, 4.0) + Cosmo_Parameters.OmegaL)
 
 
 def HubinvMpc(Cosmo_Parameters, z):
-    # H(z) in 1/Mpc
-    return Hub(Cosmo_Parameters, z) / constants.c_kms
+    # H(z) in 1/Mpc - directly from Boltzmann code to stay authoratitive
+    #return Hub(Cosmo_Parameters, z) / constants.c_kms
+    return Cosmo_Parameters.Hofzint(z)
 
 
 def Hubinvyr(Cosmo_Parameters, z):
-    # H(z) in 1/yr
-    return Hub(Cosmo_Parameters, z) * constants.KmToMpc * constants.yrTos
+    # H(z) in 1/yr, just different units
+    #return Hub(Cosmo_Parameters, z) * constants.KmToMpc * constants.yrTos
+    return HubinvMpc(Cosmo_Parameters, z)* constants.c_kms* constants.KmToMpc * constants.yrTos
 
 
 def rho_baryon(Cosmo_Parameters, z):
