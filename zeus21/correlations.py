@@ -20,7 +20,7 @@ from . import cosmology
 class Correlations:
     "Class that calculates and keeps the correlation functions."
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo):
+    def __init__(self, Cosmo_Parameters):
 
 
         #we choose the k to match exactly the log FFT of input Rtabsmoo.
@@ -28,10 +28,11 @@ class Correlations:
         self._klistCF, _dummy_ = mcfit.xi2P(Cosmo_Parameters._Rtabsmoo, l=0, lowring=True)(0*Cosmo_Parameters._Rtabsmoo, extrap=False)
         self.NkCF = len(self._klistCF)
 
-        self._PklinCF = np.zeros(self.NkCF) # P(k) in 1/Mpc^3
-        for ik, kk in enumerate(self._klistCF):
-            self._PklinCF[ik] = ClassCosmo.pk(kk, 0.0) # function .pk(k,z)
 
+        self._PklinCF = Cosmo_Parameters.Pk_interpolator_z0(self._klistCF)
+        # np.zeros(self.NkCF) # P(k) in 1/Mpc^3
+        # for ik, kk in enumerate(self._klistCF):
+        #     self._PklinCF[ik] = Cosmo_Parameters.Pk_interpolator_z0(kk)
 
 
         self._xif = mcfit.P2xi(self._klistCF, l=0, lowring=True)
@@ -97,7 +98,7 @@ class Correlations:
 class Power_Spectra:
     "Get power spetrum from correlation functions and coefficients"
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo, Correlations, T21_coefficients, RSD_MODE=1):
+    def __init__(self, Cosmo_Parameters, Correlations, T21_coefficients, RSD_MODE=1):
 
 
         #set up some variables

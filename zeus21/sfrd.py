@@ -21,7 +21,7 @@ class get_T21_coefficients:
     -LyA coupling. \
     TODO: reionization/EoR"
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo, Astro_Parameters, HMF_interpolator, zmin=5.0):
+    def __init__(self, Cosmo_Parameters, Astro_Parameters, HMF_interpolator, zmin=5.0):
         self.Rtabsmoo = Cosmo_Parameters._Rtabsmoo
         self.dlogRR = Cosmo_Parameters._dlogRR
 
@@ -88,7 +88,7 @@ class get_T21_coefficients:
 
         # here goes the bulk of the work
         for izp, zp in enumerate(self.zintegral):
-            chizp = ClassCosmo.comoving_distance(zp)
+            chizp = Cosmo_Parameters.chiofzint(zp)
             chitosolve = chizp + self.Rtabsmoo
             chimax = Cosmo_Parameters._chitab[-1]
             chitosolve = chitosolve.clip(max=chimax)  # make sure we don't get chis for z outside of interpolation range. Either way nothing for z>zmax_CLASS~50 will be used.
@@ -258,7 +258,7 @@ class get_T21_coefficients:
 
         self.Jalpha_avg = self.coeff1LyAzp * np.sum(self.coeff2LyAzpRR, axis=1)  # units of 1/(cm^2 s Hz sr)
 
-        self.T_CMB = cosmology.Tcmb(ClassCosmo, self.zintegral)
+        self.T_CMB = cosmology.Tcmb(Cosmo_Parameters, self.zintegral)
 
         _tau_GP = 3.0 / 2.0 * Cosmo_Parameters.f_H * cosmology.n_baryon(Cosmo_Parameters, self.zintegral) * constants.Mpctocm / cosmology.HubinvMpc(Cosmo_Parameters, self.zintegral) * (constants.wavelengthLyA / 1e7) ** 3 * constants.widthLyAcm * (1.0 - self.xe_avg)  # ~3e5 at z=6
 

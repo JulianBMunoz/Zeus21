@@ -67,6 +67,8 @@ class Cosmo_Parameters:
         self.mu_baryon = (self.f_H + self.f_He * 4.) * 0.94 #mproton ~ 0.94 GeV
         self.mu_baryon_Msun = self.mu_baryon/constants.MsuntoGeV
 
+        self.T_CMB0 = ClassCosmo.T_cmb() #not exactly derived, but doesn't matter
+
 
         #for R->M conversions for HMF. Used for CLASS input so assumes tophat.
         self.constRM = self.OmegaM*self.rhocrit * 4.0 * np.pi/3.0
@@ -75,9 +77,11 @@ class Cosmo_Parameters:
 
 
 
+        #build the interpolators from CLASS - so we don't have to call it again
         self._ztabinchi = np.linspace(0.0, 100. , 10000) #cheap so do a lot
         self._chitab = ClassCosmo.z_of_r(self._ztabinchi)[0]
         self.zfofRint = interp1d(self._chitab, self._ztabinchi)
+        self.chiofzint = interp1d(self._ztabinchi,self._chitab)
 
         _thermo = ClassCosmo.get_thermodynamics()
         self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
@@ -85,8 +89,13 @@ class Cosmo_Parameters:
 
         _ztabingrowth = np.linspace(0., 100. , 2000)
         _growthtabint = np.array([ClassCosmo.scale_independent_growth_factor(zz) for zz in _ztabingrowth])
-
         self.growthint = interp1d(_ztabingrowth,_growthtabint)
+        
+        
+        _ktabPkint = np.logspace(-5, np.log10(self.kmax_CLASS), 2000)
+        _Pktabint = np.array([ClassCosmo.pk(kk, 0.0) for kk in _ktabPkint]) # function .pk(k,z=0) from CLASS takes scalars only
+        self.Pk_interpolator_z0 = interp1d(_ktabPkint,_Pktabint)
+
 
 
         #and define the shells that we integrate over at each z.

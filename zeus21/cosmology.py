@@ -52,9 +52,8 @@ def n_baryon(Cosmo_Parameters, z):
     return rho_baryon(Cosmo_Parameters, z) / Cosmo_Parameters.mu_baryon_Msun / (constants.Mpctocm**3.0)
 
 
-def Tcmb(ClassCosmo, z):
-    T0CMB = ClassCosmo.T_cmb()
-    return T0CMB * (1 + z)
+def Tcmb(Cosmo_Parameters, z):
+    return Cosmo_Parameters.T_CMB0 * (1 + z)
 
 
 def Tadiabatic(CosmoParams, z):
