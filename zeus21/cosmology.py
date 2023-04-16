@@ -157,17 +157,19 @@ class HMF_interpolator:
         "Interpolator to find HMF(M,z), designed to take a single z but an array of Mh in Msun"
         _logMh = np.log(Mh)
 
-        logMhvec = np.asarray([_logMh]) if np.isscalar(_logMh) else np.asarray(_logMh)
-        inarray = np.array([[LM, z] for LM in logMhvec])
+        #logMhvec = np.asarray([_logMh]) if np.isscalar(_logMh) else np.asarray(_logMh)
+        #inarray = np.array([[LM, z] for LM in logMhvec])
 
-        return np.exp(self.logHMFint(inarray))
+        #return np.exp(self.logHMFint(inarray))
+        return np.exp(self.logHMFint(np.array([_logMh, z])))
 
     def sigma_int(self, Mh, z):
         "Interpolator to find sigma(M,z), designed to take a single z but an array of Mh in Msun"
         _logMh = np.log(Mh)
-        logMhvec = np.asarray([_logMh]) if np.isscalar(_logMh) else np.asarray(_logMh)
-        inarray = np.array([[LM, z] for LM in logMhvec])
-        return self.sigmaintlog(inarray)
+        #logMhvec = np.asarray([_logMh]) if np.isscalar(_logMh) else np.asarray(_logMh)
+        #inarray = np.array([[LM, z] for LM in logMhvec])
+        #return self.sigmaintlog(inarray)
+        return self.sigmaintlog(np.array([_logMh, z]))
 
     def sigmaR_int(self, RR, z):
         "Interpolator to find sigma(RR,z), designed to take a single z but an array of RR in cMpc"
@@ -179,19 +181,20 @@ class HMF_interpolator:
     def dsigmadM_int(self, Mh, z):
         "Interpolator to find dsigma/dM(M,z), designed to take a single z but an array of Mh in Msun. Used in 21cmFAST mode"
         _logMh = np.log(Mh)
-        logMhvec = np.asarray([_logMh]) if np.isscalar(_logMh) else np.asarray(_logMh)
-        inarray = np.array([[LM, z] for LM in logMhvec])
-        return self.dsigmadMintlog(inarray)
+        #logMhvec = np.asarray([_logMh]) if np.isscalar(_logMh) else np.asarray(_logMh)
+        #inarray = np.array([[LM, z] for LM in logMhvec])
+        #return self.dsigmadMintlog(inarray)
+        return self.dsigmadMintlog(np.array([_logMh, z]))
 
 
 def growth(Cosmo_Parameters, z):
     "Scale-independent growth factor, interpolated from CLASS"
-    zlist = np.asarray([z]) if np.isscalar(z) else np.asarray(z)
+    #zlist = np.asarray([z]) if np.isscalar(z) else np.asarray(z)
     if Cosmo_Parameters.Flag_emulate_21cmfast == True:
-        _offsetgrowthdicke21cmFAST = 1 - 0.000248 * (zlist - 5.0)  # as in HMF, to fix growth. have to do it independently since it depends on z.
-        return Cosmo_Parameters.growthint(zlist) * _offsetgrowthdicke21cmFAST
+        _offsetgrowthdicke21cmFAST = 1 - 0.000248 * (z - 5.0)  # as in HMF, to fix growth. have to do it independently since it depends on z.
+        return Cosmo_Parameters.growthint(np.array(z)) * _offsetgrowthdicke21cmFAST
     else:
-        return Cosmo_Parameters.growthint(zlist)
+        return Cosmo_Parameters.growthint(np.array(z))
 
 
 def dgrowth_dz(CosmoParams, z):
@@ -210,30 +213,3 @@ def T021(Cosmo_Parameters, z):
     "Prefactor in mK to T21 that only depends on cosmological parameters and z. Eg Eq.(21) in 2110.13919"
     return 34 * pow((1 + z) / 16.0, 0.5) * (Cosmo_Parameters.omegab / 0.022) * pow(Cosmo_Parameters.omegam / 0.14, -0.5)
 
-
-# UNUSED:
-# def interp2Dlinear_only_y(arrayxy, arrayz, x, y):
-#     "2D interpolator where the x axis is assumed to be an array identical to the trained x. That is, an array of 1D linear interpolators. arrayxy is [x,y]. arrayz is result. x is the x input (=arrayxy[0]),  and y the y input. Returns z result (array)"
-#     if((x != arrayxy[0]).all()):
-#         print('ERROR on interp2Dlinear_only_y, x need be the same in interp and input')
-#         return -1
-#     Ny = len(arrayxy[1])
-#     ymin, ymax = arrayxy[1][[0,-1]]
-#     if((y > ymax or y<ymin).all()):
-#         print('EXTRAPOLATION on interp2Dlinear_only_y on y axis. max={} curr={}'.format(ymax, y))
-#
-#     ystep = (ymax-ymin)/(Ny-1.)
-#     ysign = np.sign(ystep).astype(int)
-#
-#     iy = np.floor((y-ymin)/ystep).astype(int)
-#     iy=np.fmin(iy,Ny-1-(ysign+1)//2) #if positive ysign stop 1 lower
-#     iy=np.fmax(iy,0-(ysign-1)//2) #if negative ysign stop 1 higher
-#
-#     y1 = ymin + iy * ystep
-#     y2 = y1 + ystep
-#
-#     fy1 = arrayz[:,iy]
-#     fy2 = arrayz[:,iy+ysign]
-#
-#     fy = fy1 + (fy2-fy1)/ystep * (y - y1)
-#     return fy

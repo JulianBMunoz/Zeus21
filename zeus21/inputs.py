@@ -9,9 +9,9 @@ UT Austin and Harvard CfA - January 2023
 
 from . import constants
 
-import numpy as np
+import jax.numpy as np
 from classy import Class
-from scipy.interpolate import interp1d
+#from scipy.interpolate import interp1d
 
 
 class Cosmo_Parameters_Input:
@@ -78,24 +78,24 @@ class Cosmo_Parameters:
 
 
         #build the interpolators from CLASS - so we don't have to call it again
-        self._ztabinchi = np.linspace(0.0, 100. , 10000) #cheap so do a lot
+        self._ztabinchi = np.linspace(0.0, 100., 10000) #cheap so do a lot
         self._chitab, self._Hztab = ClassCosmo.z_of_r(self._ztabinchi)
-        self.zfofRint = interp1d(self._chitab, self._ztabinchi)
-        self.chiofzint = interp1d(self._ztabinchi,self._chitab)
-        self.Hofzint = interp1d(self._ztabinchi,self._Hztab)
+        self.zfofRint = interp1d_use(self._chitab, self._ztabinchi)
+        self.chiofzint = interp1d_use(self._ztabinchi,self._chitab)
+        self.Hofzint = interp1d_use(self._ztabinchi,self._Hztab)
 
         _thermo = ClassCosmo.get_thermodynamics()
-        self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
-        self.xetanhint = interp1d(_thermo['z'], _thermo['x_e'])
+        self.Tadiabaticint = interp1d_use(_thermo['z'], _thermo['Tb [K]'])
+        self.xetanhint = interp1d_use(_thermo['z'], _thermo['x_e'])
 
         _ztabingrowth = np.linspace(0., 100. , 2000)
         _growthtabint = np.array([ClassCosmo.scale_independent_growth_factor(zz) for zz in _ztabingrowth])
-        self.growthint = interp1d(_ztabingrowth,_growthtabint)
+        self.growthint = interp1d_use(_ztabingrowth,_growthtabint)
         
         
         _ktabPkint = np.logspace(-5, np.log10(self.kmax_CLASS), 2000)
         _Pktabint = np.array([ClassCosmo.pk(kk, 0.0) for kk in _ktabPkint]) # function .pk(k,z=0) from CLASS takes scalars only
-        self.Pk_interpolator_z0 = interp1d(_ktabPkint,_Pktabint)
+        self.Pk_interpolator_z0 = interp1d_use(_ktabPkint,_Pktabint)
 
 
 
@@ -215,7 +215,7 @@ class Astro_Parameters:
         #do not cut at higher energies since they redshift into <2 keV band
 
 
-    def SED_LyA(self, nu_in):
+    def SED_LyA(self, nulist):
         "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
 
         nucut = constants.freqLyB #above and below this freq different power laws
@@ -226,18 +226,66 @@ class Astro_Parameters:
         indexabove = -8.0
         normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
 
-        nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
+        #nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
 
-        result = np.zeros_like(nulist)
-        for inu, currnu in enumerate(nulist):
-            if (currnu<constants.freqLyA or currnu>=constants.freqLyCont):
-                result[inu] = 0.0
-            elif (currnu < nucut): #between LyA and LyB
-                result[inu] = normbelow * (currnu/nucut)**indexbelow
-            elif (currnu >= nucut):  #between LyB and Continuum
-                result[inu] = normabove * (currnu/nucut)**indexabove
-            else:
-                print("Error in SED_LyA, whats the frequency Kenneth?")
+        _weights_noband = np.heaviside(nulist - constants.freqLyCont,0.5) + np.heaviside(constants.freqLyA - nulist,0.5) #for nu<LyA or >LYcont. Set to 0
+        _weights_band1 = np.heaviside(nulist - constants.freqLyA,0.5) + np.heaviside(constants.freqLyB - nulist,0.5) #for LyB>nu>LyA 
+        _weights_band2 = np.heaviside(nulist - constants.freqLyB,0.5) + np.heaviside(constants.freqLyCont - nulist,0.5) #for LyCont>nu>LyB 
+
+        result = normbelow * (nulist/nucut)**indexbelow * _weights_band1 + normabove * (nulist/nucut)**indexabove * _weights_band2
+
+        # result = np.zeros_like(nulist)
+        # for inu, currnu in enumerate(nulist):
+        #     if (currnu<constants.freqLyA or currnu>=):
+        #         result[inu] = 0.0
+        #     elif (currnu < nucut): #between LyA and LyB
+        #         result[inu] = normbelow * (currnu/nucut)**indexbelow
+        #     elif (currnu >= nucut):  #between LyB and Continuum
+        #         result[inu] = normabove * (currnu/nucut)**indexabove
+        #     else:
+        #         print("Error in SED_LyA, whats the frequency Kenneth?")
 
 
         return result/nucut #extra 1/nucut because dnu, normalizes the integral
+
+
+
+def interp1d_use(x, y):
+    #so we can add a flag about which interpolator to use, if numpy or jax. Jax for now
+    return interp1d_jax(x, y, kind='linear', assume_sorted=False)
+
+#1d (linear) jax interpolator to replace scipy's, by Sid
+def interp1d_jax(x, y, kind='linear', assume_sorted=False):
+    if kind != 'linear':
+        raise NotImplementedError('Only linear interpolation is supported.')
+
+    if not assume_sorted:
+        sorted_indices = np.argsort(x)
+        x = x[sorted_indices]
+        y = y[sorted_indices]
+
+    def interpolate(x_new):
+        if np.ndim(x_new) != 1:
+            raise ValueError("x_new should be a 1D array")
+
+        x_min = x[0]
+        x_max = x[-1]
+
+        out_of_bounds = (x_new < x_min) | (x_new > x_max)
+
+        def in_bounds(x_new):
+            indices = np.searchsorted(x, x_new, side='right') - 1
+            indices = np.clip(indices, 0, x.shape[0] - 2)
+
+            x0, x1 = x[indices], x[indices + 1]
+            y0, y1 = y[indices], y[indices + 1]
+
+            t = (x_new - x0) / (x1 - x0)
+            return (1 - t) * y0 + t * y1
+
+        def out_of_bounds_func(x_new):
+            return np.zeros_like(x_new)
+
+        return np.where(out_of_bounds, out_of_bounds_func(x_new), in_bounds(x_new))
+
+    return interpolate

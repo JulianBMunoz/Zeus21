@@ -52,19 +52,14 @@ class get_T21_coefficients:
         # Finally, call the double-vmapped function with x and y
         self.sigmaofRtab = f_vmap_xy(self.Rtabsmoo, self.zintegral)[..., 0]
 
-        print(self.sigmaofRtab.shape)
-
-        # vmapped version of the above
 
         fesctab = fesc(Astro_Parameters, HMF_interpolator.Mhtab)  # prepare fesc(M) table -- z independent for now so only once
 
         # Xray coeffs
-        self.coeff1Xzp = np.zeros_like(self.zintegral)  # zp-dependent coeff in Xray calculation
         self.coeff2XzpRR = np.zeros_like(self.SFRDbar2D)  # zp and R-dependent coeff in Xray calculation
         self.Tk_avg = np.zeros_like(self.zintegral)  # average kinetic temperature
 
         # LyA coeffs
-        self.coeff1LyAzp = np.zeros_like(self.zintegral)  # Same but for LyA
         self.coeff2LyAzpRR = np.zeros_like(self.SFRDbar2D)  # Same but for LyA
         self.Jalpha_avg = np.zeros_like(self.zintegral)  # avg Jalpha (we compute xa at the end)
 
@@ -81,14 +76,17 @@ class get_T21_coefficients:
 
         # TODO: revisit for trapz rather than sum
         dzp = self.dlogzint * self.zintegral
-        self.coeff1Xzp = -2.0 / 3.0 * dzp / cosmology.Hubinvyr(Cosmo_Parameters, self.zintegral) / (1 + self.zintegral) * (1 + self.zintegral) ** 2.0 * constants.yrTos
-        self.coeff1Xzp /= (1.0 + self.zintegral) ** 2  # Units of coeff1 are s^1. Does not include fheat or fion yet
+        self.coeff1Xzp = -2.0 / 3.0 * dzp / cosmology.Hubinvyr(Cosmo_Parameters, self.zintegral) / (1 + self.zintegral) * (1 + self.zintegral) ** 2.0 * constants.yrTos # zp-dependent coeff in Xray calculation
+        self.coeff1Xzp /= (1.0 + self.zintegral) ** 2  # Units of coeff1 are s^1. Does not include fheat or fion yet 
         # this accounts for adiabatic cooling. compensated by the inverse at the end
-        self.coeff1LyAzp = (1 + self.zintegral) ** 2 / (4 * np.pi)  # dimless
+        self.coeff1LyAzp = (1 + self.zintegral) ** 2 / (4 * np.pi)  # Same but for LyA, dimless
+
+        chizp_tab = Cosmo_Parameters.chiofzint(self.zintegral)
+        
 
         # here goes the bulk of the work
         for izp, zp in enumerate(self.zintegral):
-            chizp = Cosmo_Parameters.chiofzint(zp)
+            chizp = chizp_tab[izp] #TODO, revisit to make zp and R 2D array outside of loop
             chitosolve = chizp + self.Rtabsmoo
             chimax = Cosmo_Parameters._chitab[-1]
             chitosolve = chitosolve.clip(max=chimax)  # make sure we don't get chis for z outside of interpolation range. Either way nothing for z>zmax_CLASS~50 will be used.
@@ -128,28 +126,49 @@ class get_T21_coefficients:
             zRR = self.ztabRsmoo[izp, indexkeepRsmoo]
             RR = self.Rtabsmoo[indexkeepRsmoo]
 
-            # TODO: Take out of z loop
-            sigmaR = jax.vmap(HMF_interpolator.sigmaR_int)(RR, zRR)
+            # TODO: Take out of z loop - WIP
+            sigmaR = jax.vmap(HMF_interpolator.sigmaR_int)(RR, zRR) # sigma(R)
 
-            for iR, RR in enumerate(self.Rtabsmoo[indexkeepRsmoo]):
-                zRR = self.ztabRsmoo[izp, iR]
+            # vmap over both dimensions (JBM: sid we gotta check if there's a better way to do this)
+            f = HMF_interpolator.sigma_int
+            f_vmap_x = jax.vmap(f, in_axes=(0, None))
+            f_vmap_xy = jax.vmap(f_vmap_x, in_axes=(None, 0))
 
-                sigmacurr = HMF_interpolator.sigma_int(HMF_interpolator.Mhtab, zRR)  # sigma(M)
-                modsigmasq = sigmacurr**2 - sigmaR**2
+            # Finally, call the double-vmapped function with x and y
+            sigmacurr = f_vmap_xy(HMF_interpolator.Mhtab, zRR)[..., 0]# sigma(M)
+            
+            modsigmasq = (sigmacurr**2 - sigmaR**2).clip(min=1e-6) # if sigmaR > sigmaM the halo does not fit in the radius R. Cut the sum           
+            modsigma = np.sqrt(modsigmasq)
 
-                indextoobig = modsigmasq <= 0.0
-                modsigmasq[indextoobig] = np.inf  # if sigmaR > sigmaM the halo does not fit in the radius R. Cut the sum
-                modsigma = np.sqrt(modsigmasq)
+            #removed for now, we'll revisit if it's needed:
+            #indextoobig = modsigmasq <= 0.0
+            #modsigmasq[indextoobig] = np.inf  
 
-                dsigmadMcurr = HMF_interpolator.dsigmadM_int(HMF_interpolator.Mhtab, zRR)
+            if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
+                dsigmadMcurr = jax.vmap(HMF_interpolator.dsigmadM_int)(HMF_interpolator.Mhtab, zRR) # dsigma(M)/dM
                 dlogSdMcurr = (dsigmadMcurr * sigmacurr * 2.0) / (modsigmasq)  # d(log(S))/dM = dsigma^2/dM * 1/S,  S=sigmaM^2 - sigmaR^2 = modsigmasq. Input to EPS HMF (used in 21cmFAST mode). Algebra written out for clarity
 
-                # calculate avg SFRD
-                HMF_curr = HMF_interpolator.HMF_int(HMF_interpolator.Mhtab, zRR)
-                SFRtab_curr = SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, zRR)
 
-                integrand = HMF_curr * SFRtab_curr * HMF_interpolator.Mhtab
-                self.SFRDbar2D[izp, iR] = np.trapz(integrand, HMF_interpolator.logtabMh)
+
+
+            f = HMF_interpolator.HMF_int
+            f_vmap_x = jax.vmap(f, in_axes=(0, None))
+            f_vmap_xy = jax.vmap(f_vmap_x, in_axes=(None, 0))
+            HMF_curr = f_vmap_xy(HMF_interpolator.Mhtab, zRR)[..., 0]# dn/dM (HMF)
+
+            f = SFR
+            f_vmap_x = jax.vmap(f, in_axes=(None,None,None, 0, None)) #first 3 are (Astro_Parameters, Cosmo_Parameters,HMF_interpolator)
+            f_vmap_xy = jax.vmap(f_vmap_x, in_axes=(None,None,None, None, 0))
+
+            SFRtab_curr = f_vmap_xy(Astro_Parameters, Cosmo_Parameters,HMF_interpolator, HMF_interpolator.Mhtab, zRR)[..., 0]# SFR(Mh,z)
+             
+             
+             # calculate avg SFRD
+            integrand = HMF_curr * SFRtab_curr * HMF_interpolator.Mhtab
+            self.SFRDbar2D = self.SFRDbar2D.at[izp].set(np.trapz(integrand, HMF_interpolator.logtabMh) )
+
+
+            for iR, RR in enumerate(self.Rtabsmoo[indexkeepRsmoo]):              
 
                 if iR == 0:  # only the zp term (R->0)
                     self.niondot_avg[izp] = np.trapz(integrand * fesctab, HMF_interpolator.logtabMh)  # multiply by Nion/baryon outside the loop
@@ -363,9 +382,8 @@ def Matom(z):
 
 
 # Only PopII for now (TODO, add PopIII)
-def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, z):
-    "SFR in Msun/yr at redshift z. Evaluated at the halo masses Mh [Msun] of the HMF_interpolator, given Astro_Parameters"
-    Mh = HMF_interpolator.Mhtab
+def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, Mh, z):
+    "SFR in Msun/yr at redshift z. Evaluated at the halo masses Mh [Msun] (ideally those of the HMF_interpolator, but free) and z, given Cosmo_Parameters and Astro_Parameters"
     if Astro_Parameters.FLAG_MTURN_FIXED == False:
         fduty = np.exp(-Matom(z) / Mh)
     else:
@@ -380,17 +398,19 @@ def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, z):
         if Astro_Parameters.accretion_model == 0:  # exponential accretion
             dMhdz = Mh * constants.ALPHA_accretion_exponential
         elif Astro_Parameters.accretion_model == 1:  # EPS accretion
-            Mh2 = Mh * constants.EPSQ_accretion
-            indexMh2low = Mh2 < Mh[0]
-            Mh2[indexMh2low] = Mh[0]  # to avoid extrapolation to lower M. Those will have
+            Mh2 = (Mh * constants.EPSQ_accretion).clip(min=HMF_interpolator._Mhmin) #clipped to avoid extrapolation
+            #indexMh2low = Mh2 <= HMF_interpolator._Mhmin
+            #Mh2[indexMh2low] = Mh[0]  # to avoid extrapolation to lower M. 
             sigmaMh = HMF_interpolator.sigma_int(Mh, z)
             sigmaMh2 = HMF_interpolator.sigma_int(Mh2, z)
-            sigmaMh2[indexMh2low] = 1e99
+
+            InvRmsDiff = np.nan_to_num(1/np.sqrt(sigmaMh2**2 - sigmaMh**2), nan=0.0, posinf=0.0, neginf=0.0) #set inf to zero so they don't wreck the denominator. These are M<Mmin so we just don't calculate sigma
 
             growth = cosmology.growth(Cosmo_Parameters, z)
             dzgrow = z * 0.01
+            #TODO: Sid maybe change numerical derivative for Jax derivative here?
             dgrowthdz = (cosmology.growth(Cosmo_Parameters, z + dzgrow) - cosmology.growth(Cosmo_Parameters, z - dzgrow)) / (2.0 * dzgrow)
-            dMhdz = -Mh * np.sqrt(2 / np.pi) / np.sqrt(sigmaMh2**2 - sigmaMh**2) * dgrowthdz / growth * Cosmo_Parameters.delta_crit_ST
+            dMhdz = -Mh * np.sqrt(2 / np.pi) * InvRmsDiff * dgrowthdz / growth * Cosmo_Parameters.delta_crit_ST
         else:
             print("ERROR! Have to choose an accretion model in Astro_Parameters (accretion_model)")
 

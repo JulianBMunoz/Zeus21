@@ -7,7 +7,7 @@ UT Austin and Harvard CfA - January 2023
 
 """
 
-import numpy as np
+import jax.numpy as np
 from . import constants
 from .cosmology import n_baryon, HubinvMpc
 

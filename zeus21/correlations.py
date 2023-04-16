@@ -7,10 +7,10 @@ UT Austin and Harvard CfA - January 2023
 
 """
 
-import numpy as np
-from scipy.interpolate import UnivariateSpline
+import jax.numpy as np
 import mcfit
-from scipy.special import gammaincc #actually very fast, no need to approximate
+#from jax.scipy.interpolate import UnivariateSpline
+#from scipy.special import gammaincc #actually very fast, no need to approximate
 
 from . import constants
 from . import cosmology
@@ -81,15 +81,17 @@ class Correlations:
 
         xi_RR_CF = np.zeros((Cosmo_Parameters.NRs, Cosmo_Parameters.NRs, self.NkCF))
 
+        #TODO, we can/should vmap this somehow, unclear to me how rn.
+
         for iR1, RR1 in enumerate(Cosmo_Parameters._Rtabsmoo):
             for iR2, RR2 in enumerate(Cosmo_Parameters._Rtabsmoo):
                 if(iR1 > iR2):
-                    xi_RR_CF[iR1,iR2] = xi_RR_CF[iR2,iR1]
+                    xi_RR_CF = xi_RR_CF.at[iR1,iR2].set(xi_RR_CF[iR2,iR1])
                 else:
                     _PkRR = self._PklinCF * self.Window(RR1) * self.Window(RR2)
                     self.rlist_CF, xi_mcfit = self._xif(_PkRR, extrap=False)
 
-                    xi_RR_CF[iR1,iR2] = xi_mcfit
+                    xi_RR_CF = xi_RR_CF.at[iR1,iR2].set(xi_mcfit)
 
         return xi_RR_CF
 
