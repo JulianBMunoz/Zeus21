@@ -8,6 +8,7 @@ UT Austin and Harvard CfA - January 2023
 """
 
 import jax.numpy as np
+from jax.lax import cond #TODO, make work with numpy too, define our own cond?
 from . import constants
 from .cosmology import n_baryon, HubinvMpc
 
@@ -27,21 +28,22 @@ class Xray_class:
         Nzinttau = np.floor(10*constants.precisionboost).astype(int)
         #surprisingly it converges very quickly, since things are smooth functions of nu/z. Warning, make sure to tweak if SED is not a powerlaw!
 
-        Envec = np.asarray([En]) if np.isscalar(En) else np.asarray(En)
 
         zinttau = np.linspace(z,zp,Nzinttau)
 
 
-        Eninttautab = np.outer((1+zinttau)/(1+z) , Envec)
+        Eninttautab = np.outer((1+zinttau)/(1+z) , En)
 
         sigmatot = self.atomfractions[0] * sigma_HI(Eninttautab)
         sigmatot += self.atomfractions[1] * sigma_HeI(Eninttautab)
         sigmatot = sigmatot.T #to broadcast below
 
         integrand = 1.0/HubinvMpc(Cosmo_Parameters, zinttau)/(1+zinttau) * sigmatot * n_baryon(Cosmo_Parameters, zinttau) * constants.Mpctocm
-        taulist = np.trapz(integrand, zinttau, axis=1)
+        #taulist = np.trapz(integrand, zinttau, axis=1)
+        taulist = np.trapz(integrand, zinttau, axis=1).clip(max = self.TAUMAX)
 
         #OLD: kept for reference only.
+        #Envec = np.asarray([En]) if np.isscalar(En) else np.asarray(En)
         # taulist = 1.0*np.zeros_like(Envec)
         # for iE, Energy in enumerate(Envec):
         #     Eninttau = (1+zinttau)/(1+z) * Energy
@@ -53,8 +55,8 @@ class Xray_class:
         #
         #     taulist[iE] = np.trapz(integrand, zinttau)
 
-        indextautoolarge = np.array(taulist>=self.TAUMAX)
-        taulist [indextautoolarge] = self.TAUMAX
+        # indextautoolarge = np.array(taulist>=self.TAUMAX)
+        # taulist [indextautoolarge] = self.TAUMAX
         return taulist
 
 
@@ -66,13 +68,14 @@ class Xray_class:
         XRAY_OPACITY_MODEL = Cosmo_Parameters.Flag_emulate_21cmfast
         #important, 0 = standard, 1=21cmfast-like (step at tau=1)
 
+        return cond(XRAY_OPACITY_MODEL, np.heaviside(1.0 - self.optical_depth(Cosmo_Parameters,En,z,zp), 0.5), np.exp(-self.optical_depth(Cosmo_Parameters,En,z,zp)))
 
-        if(XRAY_OPACITY_MODEL==0): #0 is standard/regular.
-            return np.exp(-self.optical_depth(Cosmo_Parameters,En,z,zp))
-        elif (XRAY_OPACITY_MODEL==1): #1 is 21cmFAST-like (step-wise exp(-tau), either 1 or 0)
-            return np.heaviside(1.0 - self.optical_depth(Cosmo_Parameters,En,z,zp), 0.5)
-        else:
-            print('ERROR, choose a correct XRAY_OPACITY_MODEL')
+        # if(XRAY_OPACITY_MODEL==0): #0 is standard/regular.
+        #     return 
+        # elif (XRAY_OPACITY_MODEL==1): #1 is 21cmFAST-like (step-wise exp(-tau), either 1 or 0)
+        #     return 
+        # else:
+        #     print('ERROR, choose a correct XRAY_OPACITY_MODEL')
 
 
     def lambda_Xray_com(self, Cosmo_Parameters, En,z):

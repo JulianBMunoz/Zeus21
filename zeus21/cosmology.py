@@ -33,7 +33,7 @@ def runclass(CosmologyIn):
 
 
 def HubinvMpc(Cosmo_Parameters, z):
-    # H(z) in 1/Mpc - directly from Boltzmann code to stay authoratitive
+    # H(z) in 1/Mpc - directly from Boltzmann code to stay DRY
     #return Hub(Cosmo_Parameters, z) / constants.c_kms
     return Cosmo_Parameters.Hofzint(z)
 
@@ -192,21 +192,21 @@ def growth(Cosmo_Parameters, z):
     #zlist = np.asarray([z]) if np.isscalar(z) else np.asarray(z)
     if Cosmo_Parameters.Flag_emulate_21cmfast == True:
         _offsetgrowthdicke21cmFAST = 1 - 0.000248 * (z - 5.0)  # as in HMF, to fix growth. have to do it independently since it depends on z.
-        return Cosmo_Parameters.growthint(np.array(z)) * _offsetgrowthdicke21cmFAST
+        return Cosmo_Parameters.growthint(z) * _offsetgrowthdicke21cmFAST
     else:
-        return Cosmo_Parameters.growthint(np.array(z))
+        return Cosmo_Parameters.growthint(z)
 
 
 def dgrowth_dz(CosmoParams, z):
     "Derivative of growth factor growth() w.r.t. z"
-    zlist = np.asarray([z]) if np.isscalar(z) else np.asarray(z)
-    dzlist = zlist * 0.001
-    return (growth(CosmoParams, z + dzlist) - growth(CosmoParams, z - dzlist)) / (2.0 * dzlist)
+    #zlist = np.asarray([z]) if np.isscalar(z) else np.asarray(z)
+    dz = z * 0.002
+    return (growth(CosmoParams, z + dz) - growth(CosmoParams, z - dz)) / (2.0 * dz)
 
 
 def redshift_of_chi(CosmoParams, z):
     "Returns z(chi) for any input comoving distance from today chi in Mpc"
-    return CosmoParams.zfofRint(z)
+    return CosmoParams.zfofRint(np.array(z))
 
 
 def T021(Cosmo_Parameters, z):

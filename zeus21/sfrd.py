@@ -168,18 +168,30 @@ class get_T21_coefficients:
             self.SFRDbar2D = self.SFRDbar2D.at[izp].set(np.trapz(integrand, HMF_interpolator.logtabMh) )
 
 
+            self.niondot_avg = self.niondot_avg.at[izp].set(np.trapz(integrand[0] * fesctab, HMF_interpolator.logtabMh) )  # multiply by Nion/baryon outside the loop. Only iR=0
+
+            # First do the average part
+            # For Xrays:
+            currEnergylist = np.outer(_Energylist , (1 + zRR) ) / (1 + zp)
+            _SEDtab = Astro_Parameters.SED_XRAY(currEnergylist)
+
+            f = Xrays.opacity_Xray
+            f_vmap_x = jax.vmap(f, in_axes=(None, 0, None, None)) #Cosmo_Parameters, _Energylist, zp, zRR, 1 and 3
+            f_vmap_xy = jax.vmap(f_vmap_x, in_axes=(None, None, None, 0)) 
+            weights_X_z = f_vmap_xy(Cosmo_Parameters,_Energylist, zp, zRR)[..., 0]# input energy at zp, since it'll be redshifted inside the integral
+ 
+            JX_coeffs = _SEDtab * weights_X_z
+
             for iR, RR in enumerate(self.Rtabsmoo[indexkeepRsmoo]):              
 
-                if iR == 0:  # only the zp term (R->0)
-                    self.niondot_avg[izp] = np.trapz(integrand * fesctab, HMF_interpolator.logtabMh)  # multiply by Nion/baryon outside the loop
+                #if iR == 0:  # only the zp term (R->0)
+                #    self.niondot_avg[izp] = np.trapz(integrand * fesctab, HMF_interpolator.logtabMh)  # multiply by Nion/baryon outside the loop
+               
+                #currEnergylist = _Energylist * (1 + zRR) / (1 + zp)
+                #_SEDtab = Astro_Parameters.SED_XRAY(currEnergylist)
 
-                # First do the average part
-                # For Xrays:
-                currEnergylist = _Energylist * (1 + zRR) / (1 + zp)
-                _SEDtab = Astro_Parameters.SED_XRAY(currEnergylist)
-
-                weights_X_z = Xrays.opacity_Xray(Cosmo_Parameters, _Energylist, zp, zRR)  # input energy at zp, since it'll be redshifted inside the integral
-                JX_coeffs = _SEDtab * weights_X_z
+                # weights_X_z = Xrays.opacity_Xray(Cosmo_Parameters, _Energylist, zp, zRR)  # input energy at zp, since it'll be redshifted inside the integral
+                # JX_coeffs = _SEDtab * weights_X_z
 
                 sigma_times_en = Xrays.atomfractions[0] * sigma_HI(_Energylist) * (_Energylist - Xrays.atomEnIon[0])
                 sigma_times_en += Xrays.atomfractions[1] * sigma_HeI(_Energylist) * (_Energylist - Xrays.atomEnIon[1])
@@ -189,7 +201,7 @@ class get_T21_coefficients:
                 # Note that dEnergy = Energylist * dlogEnergy , since the table is logspaced
                 #TODO: Make into a np.trapz
 
-                self.coeff2XzpRR[izp, iR] = RR * self.dlogRR * self.SFRDbar2D[izp, iR] * XrayEnergyintegral * (1.0 / constants.Mpctocm**2.0) * constants.normLX_CONST
+                self.coeff2XzpRR = self.coeff2XzpRR.at[izp, iR].set( RR * self.dlogRR * self.SFRDbar2D[izp, iR] * XrayEnergyintegral * (1.0 / constants.Mpctocm**2.0) * constants.normLX_CONST )
                 # Units of coeff2XzpRR are erg/s, since normLX*SFR = erg/s (after sigma goes from cm^2 to Mpc^2)
 
                 # (for LyA is outside loop for vectorization)
@@ -407,9 +419,10 @@ def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, Mh, z):
             InvRmsDiff = np.nan_to_num(1/np.sqrt(sigmaMh2**2 - sigmaMh**2), nan=0.0, posinf=0.0, neginf=0.0) #set inf to zero so they don't wreck the denominator. These are M<Mmin so we just don't calculate sigma
 
             growth = cosmology.growth(Cosmo_Parameters, z)
-            dzgrow = z * 0.01
-            #TODO: Sid maybe change numerical derivative for Jax derivative here?
-            dgrowthdz = (cosmology.growth(Cosmo_Parameters, z + dzgrow) - cosmology.growth(Cosmo_Parameters, z - dzgrow)) / (2.0 * dzgrow)
+            #dzgrow = z * 0.01
+            #dgrowthdz = (cosmology.growth(Cosmo_Parameters, z + dzgrow) - cosmology.growth(Cosmo_Parameters, z - dzgrow)) / (2.0 * dzgrow)
+            #TODO: Sid maybe change numerical derivative for Jax derivative here?            
+            dgrowthdz = cosmology.dgrowth_dz(Cosmo_Parameters, z) 
             dMhdz = -Mh * np.sqrt(2 / np.pi) * InvRmsDiff * dgrowthdz / growth * Cosmo_Parameters.delta_crit_ST
         else:
             print("ERROR! Have to choose an accretion model in Astro_Parameters (accretion_model)")

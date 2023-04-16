@@ -79,7 +79,7 @@ class Cosmo_Parameters:
 
         #build the interpolators from CLASS - so we don't have to call it again
         self._ztabinchi = np.linspace(0.0, 100., 10000) #cheap so do a lot
-        self._chitab, self._Hztab = ClassCosmo.z_of_r(self._ztabinchi)
+        self._chitab, self._Hztab = ClassCosmo.z_of_r(self._ztabinchi) #chi and dchi/dz
         self.zfofRint = interp1d_use(self._chitab, self._ztabinchi)
         self.chiofzint = interp1d_use(self._ztabinchi,self._chitab)
         self.Hofzint = interp1d_use(self._ztabinchi,self._Hztab)
@@ -252,7 +252,7 @@ class Astro_Parameters:
 
 def interp1d_use(x, y):
     #so we can add a flag about which interpolator to use, if numpy or jax. Jax for now
-    return interp1d_jax(x, y, kind='linear', assume_sorted=False)
+    return interp1d_jax(np.array(x), np.array(y), kind='linear', assume_sorted=False)
 
 #1d (linear) jax interpolator to replace scipy's, by Sid
 def interp1d_jax(x, y, kind='linear', assume_sorted=False):
@@ -265,9 +265,9 @@ def interp1d_jax(x, y, kind='linear', assume_sorted=False):
         y = y[sorted_indices]
 
     def interpolate(x_new):
-        if np.ndim(x_new) != 1:
+        if np.ndim(x_new) > 1: #scalar is OK
             raise ValueError("x_new should be a 1D array")
-
+  
         x_min = x[0]
         x_max = x[-1]
 
