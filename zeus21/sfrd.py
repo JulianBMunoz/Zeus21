@@ -180,8 +180,17 @@ class get_T21_coefficients:
             f_vmap_xy = jax.vmap(f_vmap_x, in_axes=(None, None, None, 0)) 
             weights_X_z = f_vmap_xy(Cosmo_Parameters,_Energylist, zp, zRR)[..., 0]# input energy at zp, since it'll be redshifted inside the integral
  
-            JX_coeffs = _SEDtab * weights_X_z
+            JX_coeffs = _SEDtab.T * weights_X_z
 
+            sigma_times_en = Xrays.atomfractions[0] * sigma_HI(_Energylist) * (_Energylist - Xrays.atomEnIon[0])
+            sigma_times_en += Xrays.atomfractions[1] * sigma_HeI(_Energylist) * (_Energylist - Xrays.atomEnIon[1])
+            # HI and HeII separate. Notice Energy (and not Energy'), since they get absorbed at the zp frame
+
+
+            XrayEnergyintegral = np.trapz(JX_coeffs * sigma_times_en,_Energylist, axis=0)
+            #Note that dEnergy = Energylist * dlogEnergy , since the table is logspaced
+            #TODO: Make into a np.trapz
+            
             for iR, RR in enumerate(self.Rtabsmoo[indexkeepRsmoo]):              
 
                 #if iR == 0:  # only the zp term (R->0)
@@ -193,11 +202,11 @@ class get_T21_coefficients:
                 # weights_X_z = Xrays.opacity_Xray(Cosmo_Parameters, _Energylist, zp, zRR)  # input energy at zp, since it'll be redshifted inside the integral
                 # JX_coeffs = _SEDtab * weights_X_z
 
-                sigma_times_en = Xrays.atomfractions[0] * sigma_HI(_Energylist) * (_Energylist - Xrays.atomEnIon[0])
-                sigma_times_en += Xrays.atomfractions[1] * sigma_HeI(_Energylist) * (_Energylist - Xrays.atomEnIon[1])
-                # HI and HeII separate. Notice Energy (and not Energy'), since they get absorbed at the zp frame
+                # sigma_times_en = Xrays.atomfractions[0] * sigma_HI(_Energylist) * (_Energylist - Xrays.atomEnIon[0])
+                # sigma_times_en += Xrays.atomfractions[1] * sigma_HeI(_Energylist) * (_Energylist - Xrays.atomEnIon[1])
+                # # HI and HeII separate. Notice Energy (and not Energy'), since they get absorbed at the zp frame
 
-                XrayEnergyintegral = np.sum(JX_coeffs * sigma_times_en * _Energylist * Astro_Parameters.dlogEnergy, axis=0)
+                # XrayEnergyintegral = np.sum(JX_coeffs * sigma_times_en * _Energylist * Astro_Parameters.dlogEnergy, axis=0)
                 # Note that dEnergy = Energylist * dlogEnergy , since the table is logspaced
                 #TODO: Make into a np.trapz
 

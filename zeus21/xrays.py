@@ -65,15 +65,19 @@ class Xray_class:
     def opacity_Xray(self, Cosmo_Parameters, En,z,zp):
         "Returns opacity, see optical_depth() for the hard calculation."
 
-        XRAY_OPACITY_MODEL = Cosmo_Parameters.Flag_emulate_21cmfast
+        #XRAY_OPACITY_MODEL = Cosmo_Parameters.Flag_emulate_21cmfast
         #important, 0 = standard, 1=21cmfast-like (step at tau=1)
 
-        return cond(XRAY_OPACITY_MODEL, np.heaviside(1.0 - self.optical_depth(Cosmo_Parameters,En,z,zp), 0.5), np.exp(-self.optical_depth(Cosmo_Parameters,En,z,zp)))
+        #TODO, REVISIT AND FIX BOOLEAN - URGENT
+
+        tau = self.optical_depth(Cosmo_Parameters,En,z,zp)
+        return np.exp(-tau)
+        #return XRAY_OPACITY_MODEL * np.heaviside(1.0 - tau, 0.5) + (1 - XRAY_OPACITY_MODEL) * 
 
         # if(XRAY_OPACITY_MODEL==0): #0 is standard/regular.
-        #     return 
+        #     return np.exp(-self.optical_depth(Cosmo_Parameters,En,z,zp))
         # elif (XRAY_OPACITY_MODEL==1): #1 is 21cmFAST-like (step-wise exp(-tau), either 1 or 0)
-        #     return 
+        #     return np.heaviside(1.0 - self.optical_depth(Cosmo_Parameters,En,z,zp), 0.5)
         # else:
         #     print('ERROR, choose a correct XRAY_OPACITY_MODEL')
 
@@ -102,9 +106,9 @@ def sigma_HI(Energyin):
     Energy = Energyin
 
     warning_lowE_HIXray = np.heaviside(13.6 - Energy, 0.5)
-    if(np.sum(warning_lowE_HIXray) > 0):
-        print('ERROR! Some energies for Xrays below HI threshold in sigma_HI. Too low!')
-
+    #if(np.sum(warning_lowE_HIXray) > 0):
+    #    print('ERROR! Some energies for Xrays below HI threshold in sigma_HI. Too low!')
+    #TODO: throw error if so!
 
     x = Energy/E0 - y0
     y = np.sqrt(x**2 + y1**2)
@@ -126,9 +130,9 @@ def sigma_HeI(Energyin):
 
     Energy = Energyin
     warning_lowE_HeIXray = np.heaviside(25. - Energy, 0.5)
-    if(np.sum(warning_lowE_HeIXray) > 0):
-        print('ERROR! Some energies for Xrays below HeI threshold in sigma_HeI. Too low!')
-
+    #if(np.sum(warning_lowE_HeIXray) > 0):
+    #    print('ERROR! Some energies for Xrays below HeI threshold in sigma_HeI. Too low!')
+    #TODO: throw error if so!
 
     x = Energy/E0 - y0
     y = np.sqrt(x**2 + y1**2)
