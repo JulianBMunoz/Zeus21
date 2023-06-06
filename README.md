@@ -2,7 +2,7 @@
 <img src="docs/zeusLogo.png" width=20% height=20%>
 </p>
 
-# Zeus21: An analytic code for 21-cm at cosmic dawn
+# Zeus21: Lightning-fast simulations of 21-cm at cosmic dawn
 
 Zeus21 encodes the effective model for the 21-cm power spectrum and global signal from [Muñoz 2023](https://arxiv.org/abs/2302.08506). The goal is to capture all the nonlocal and nonlinear physics of cosmic dawn in a light and fully Pythonic code. Zeus21 takes advantage of the approximate log-normality of the star-formation rate density (SFRD) during cosmic dawn to compute the 21-cm power spectrum analytically. It agrees with more expensive semi-numerical simulations to roughly 10% precision, but has comparably negligible computational cost (~ s) and memory requirements.
 
