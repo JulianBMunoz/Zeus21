@@ -107,7 +107,7 @@ class Cosmo_Parameters:
 
         #HMF-related constants
         if(self.Flag_emulate_21cmfast == False): #standard, best fit ST from Schneider+
-            self.a_ST = 0.85 #0.85 to fit 1805.00021, 0.707 for original ST
+            self.a_ST = 0.707 #0.85 to fit 1805.00021, 0.707 for original ST
             self.p_ST = 0.3
             self.Amp_ST = 0.3222
             self.delta_crit_ST = 1.686

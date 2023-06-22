@@ -9,9 +9,64 @@ UT Austin and Harvard CfA - January 2023
 
 import numpy as np
 from classy import Class
+import scipy
 from scipy.interpolate import RegularGridInterpolator
-
+from scipy.special import erfc
+from scipy.interpolate import interp1d,InterpolatedUnivariateSpline
+from scipy.integrate import quad, simps
 from . import constants
+from hmf import MassFunction, Transfer	 # The main hmf class
+import mcfit
+from astropy.cosmology import FlatLambdaCDM
+from astropy.cosmology import Planck15, z_at_value
+import astropy.units as u
+
+
+T_ETHOS_params = {'b':[-2.1,-3.7,4.1],
+                  'd':[1.8,-6.7,2.5],
+                  'tau':[0.03, 2.6, 0.27],
+                  'sig':0.2}
+
+h2_params = {'B':[1., 3., -0.32, -1.],
+             'C':[0.54, 8., 0.7, 1.],
+             'A':[0.8, 0.53,0.08],
+             'A_skew':[0.17, 0.7, 0.2, -3]}
+
+h_models = {0.2:{"n":4,
+              "b":3.1,
+              "d":2.93,
+              "tau":0.34,
+              "sig":0.23,
+              "h2func":(0.06669226, -0.08570612, 0.00110756)},
+           0.4:{"n":6,
+              "b":3.61,
+              "d":2.61,
+              "tau":0.34,
+              "sig":0.22,
+              "h2func":(0.22146881, -0.02533325, 0.01292187)},
+           0.6:{"n":9,
+              "b":3.91,
+              "d":2.44,
+              "tau":0.38,
+              "sig":0.2,
+              "h2func":(0.57238322, -0.00805954, 0.14900297)},
+           0.8:{"n":9,
+              "b":4.0,
+              "d":2.46,
+              "tau":0.55,
+              "sig":0.2,
+              "h2":0.88},
+           1.0:{"n":9,
+              "b":4.05,
+              "d":2.5,
+              "tau":0.67,
+              "sig":0.2,
+              "h2":1.08}}
+
+
+
+
+
 
 
 
@@ -87,8 +142,8 @@ def ST_HMF(Cosmo_Parameters, Mass, sigmaM, dsigmadM):
 
     nutilde = np.sqrt(a_ST) * delta_crit_ST/sigmaM
 
-    return -A_ST * np.sqrt(2./np.pi) * nutilde * (1. + nutilde**(-2.0*p_ST)) * np.exp(-nutilde**2/2.0) * (Cosmo_Parameters.rho_M0 / (Mass * sigmaM)) * dsigmadM
-
+    return -A_ST * np.sqrt(2./np.pi) * nutilde * (1. + nutilde**(-2.0*p_ST)) * np.exp(-nutilde**2/2.0) * (Cosmo_Parameters.rho_M0 / (Mass*sigmaM)) * dsigmadM
+    #return -A_ST * np.sqrt(2./np.pi) * nutilde * (1. + nutilde**(-2.0*p_ST)) * np.exp(-nutilde**2/2.0) * (Cosmo_Parameters.rho_M0 / (Mass * sigmaM)) * dsigmadM
 
 def PS_HMF_unnorm(Cosmo_Parameters, Mass, nu, dlogSdM):
     'Returns the Press-Schechter HMF (unnormalized since we will take ratios), given a halo Mass [Msun], nu = delta_tilde/S_tilde, with delta_tilde = delta_crit - delta_R, and variance S = sigma(M)^2 - sigma(R)^2. Used for 21cmFAST mode.'
@@ -98,31 +153,246 @@ def PS_HMF_unnorm(Cosmo_Parameters, Mass, nu, dlogSdM):
 
 
 
+def W_Bohr(k, R, beta=3.6, c=3.6):
+    """
+    Fourier space smooth window function from Bohr+2020b
+
+    Args:
+        k: frequency in Mpc^-1
+        R: filter scale in Mpc
+        beta: shape parameter
+        c: cut transition parameter
+
+    Returns:
+        Window function in Fourier space
+    """
+    x = k*R/c
+    return 1./(1+x**beta)
+
+def dW_dR_Bohr(k, R, beta=3.6, c=3.6):
+    return -beta/R * W_Bohr(k, R, beta, c)**2. * (k*R/c)**beta
+
+
+def W_tophat(k, R):
+    """
+    Fourier space transform of top-hat window function
+
+    Args:
+        k: frequency in Mpc^-1
+        R: filter scale in Mpc
+
+    Returns:
+        Window function in Fourier space
+    """
+
+    y = k*R
+    #return 3 * (np.sin(y) - y*np.cos(y))/y**3.
+    return 3.0/y**2 * (np.sin(y)/y - np.cos(y))
+
+
+def dW_dR_tophat(k, R):
+    y = k*R
+    return 3 * ((y**2. - 3) * np.sin(y) + 3*y*np.cos(y)) / y**3. / R
+
+
+
+
+    
+
+
+    
+
+
+def T(k, alpha, b, c):
+    """
+    General non-CDM transfer function following Muriga+17
+
+    Args:
+        alpha: measure of cutoff scale length
+        b: shape of cutoff
+        c: shape of cutoff
+    """
+    return (1. + (alpha*k)**b)**c
+
+def h2func(k_peak, h2_pars):
+    """
+    Generate h2 from Bohr+2020 parameterisation
+    """
+    return h2_pars[0] * np.exp(k_peak*h2_pars[1]) + h2_pars[2]
+
+def T_ETHOS(k, k_peak, h_peak, c=-20):
+    """
+    Bohr+2020 parameterisation
+
+    Args:
+        k: array
+        k_peak:
+        h_peak: must be in h_model list
+        c: cutoff = gamma, all cases - large negative gamma, doesn't make a difference
+    """
+    #assert h_peak in h_models, 'Invalid h_peak'
+
+    #b, d, tau, sig = h_models[h_peak]['b'], h_models[h_peak]['d'], h_models[h_peak]['tau'], h_models[h_peak]['sig']
+    #h2 = h_models[h_peak]['h2'] if 'h2' in h_models[h_peak] else h2func(k_peak, h_models[h_peak]['h2func'])
+
+    b = f_exp(h_peak, *T_ETHOS_params['b'])
+    d = f_exp(h_peak, *T_ETHOS_params['d'])
+    tau = f_exp(h_peak, *T_ETHOS_params['tau'])
+    sig = T_ETHOS_params['sig']
+
+    h2 = h2_model(h_peak,k_peak)
+
+    alpha = d/k_peak * (1./np.sqrt(2)**(1./c)-1)**(1./b)
+
+    peak2_ratio = 1.805
+    x_peak1 = (k - k_peak)/k_peak
+    x_peak2 = (k - peak2_ratio*k_peak)/k_peak
+
+    parameterisation = np.abs(T(k, alpha, b, c) \
+                       - np.sqrt(h_peak) * np.exp(-0.5*(x_peak1/sig)**2) \
+                       + np.sqrt(h2)/4. * erfc(x_peak2/tau - 2) \
+                              * erfc(- x_peak2/sig - 2) * np.cos(1.1083*np.pi*k/k_peak))
+
+    return parameterisation
+
+def T_WDM_Sebastian(k, k_peak, mu=1.12):
+    k0_5 = k_peak/3
+    alpha = 1/k0_5*(1/np.sqrt(2)**(-mu/5)-1)**(1/(2*mu))
+    return (1 + (alpha*k)**(2*mu)) ** (-5/mu)
+
+def f_exp(h_peak, a, b, c):
+    """
+    exponential function
+    """
+    return a*np.exp(b*h_peak) + c
+
+
+def f_tanh(h_peak, a=0.6, b=3.3, c=0.6, d=1):
+    """
+    tanh function
+    """
+    return a*(np.tanh(b*(h_peak-c))+d)
+
+
+def f_gauss(h_peak, peak=0.8, h0=0.53, sig=0.08):
+    """
+    gaussian function
+    """
+    return peak * np.exp(-0.5*((h_peak-h0)/sig)**2.)
+
+def f_skewgauss(h_peak, peak=0.16, h0=0.53, sig=0.08, alpha=0):
+    """
+    gaussian function
+    """
+    X = (h_peak - h0)/sig
+    return peak/np.sqrt(2.*np.pi)/sig * np.exp(-0.5*X**2.) * (1 + scipy.special.erf(alpha*X/np.sqrt(2.)))
+
+
+def h2_model(h_peak, k_peak):
+    """
+    h2(h_peak, k_peak)
+    """
+    A = f_skewgauss(h_peak, *h2_params['A_skew']) #f_gauss(h_peak, *h2_params['A'])
+    B = f_tanh(h_peak, *h2_params['B'])
+    C = f_tanh(h_peak, *h2_params['C'])
+    return A*np.exp(B*k_peak) + C
+
+def T_ETHOS_smooth(k, k_peak, h_peak, c=-20):
+    """
+    Bohr+2020 parameterisation
+
+    Args:
+        k: array
+        k_peak:
+        h_peak: must be in h_model list
+        c: cutoff = gamma, all cases - large negative gamma, doesn't make a difference
+    """
+
+    b   = f_exp(h_peak, *T_ETHOS_params['b'])
+    d   = f_exp(h_peak, *T_ETHOS_params['d'])
+    tau = f_exp(h_peak, *T_ETHOS_params['tau'])
+    sig = T_ETHOS_params['sig']
+
+    h2 = h2_model(h_peak, k_peak)
+
+    alpha = d/k_peak * (1./np.sqrt(2)**(1./c)-1)**(1./b)
+
+    peak2_ratio = 1.805
+    x_peak1 = (k - k_peak)/k_peak
+    x_peak2 = (k - peak2_ratio*k_peak)/k_peak
+
+    parameterisation = np.abs(T(k, alpha, b, c) \
+                       - np.sqrt(h_peak) * np.exp(-0.5*(x_peak1/sig)**2) \
+                       + np.sqrt(h2)/4. * erfc(x_peak2/tau - 2) \
+                              * erfc(- x_peak2/sig - 2) * np.cos(1.1083*np.pi*k/k_peak))
+
+    return parameterisation
+
+def W_Bohr(k, R, beta=3.6, c=3.6):
+    x = k*R/c
+    return 1./(1+x**beta)
+
+def dW_dR_Bohr(k, R, beta=3.6, c=3.6):
+    return -beta/R * W_Bohr(k, R, beta, c)**2. * (k*R/c)**beta
+
+    
+
 class HMF_interpolator:
     "Class that builds an interpolator of the HMF. Returns an interpolator"
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo):
-
+    #def __init__(self, Cosmo_Parameters, ClassCosmo, sigma, dsigma):
+    def __init__(self, Cosmo_Parameters, ClassCosmo, cosmo=None, h_peak=0., k_peak=100., use_hmf=False,
+	    	     f_params='Schneider18', window_function='Bohr',
+	    	     logk=False, smooth_Tk=False, N_k=10000, LCDM=True):
         self._Mhmin = 1e5
         self._Mhmax = 1e14
-        self._NMhs = np.floor(35*constants.precisionboost).astype(int)
+        self._NMhs = np.floor(100*constants.precisionboost).astype(int)#35
         self.Mhtab = np.logspace(np.log10(self._Mhmin),np.log10(self._Mhmax),self._NMhs) # Halo mases in Msun
         self.RMhtab = RadofMh(Cosmo_Parameters, self.Mhtab)
 
         self.logtabMh = np.log(self.Mhtab)
+        self.growth_facs = {}
 
-
+        self.cosmo = Planck15
         self._zmin=Cosmo_Parameters.zmin_CLASS
         self._zmax = Cosmo_Parameters.zmax_CLASS
         self._Nzs=np.floor(100*constants.precisionboost).astype(int)
         self.zHMFtab = np.linspace(self._zmin,self._zmax,self._Nzs)
 
+        self.cosmo = cosmo
+        if self.cosmo is None:
+            self.cosmo = Planck15
+
+        #critical density in Msun Mpc^-3 h^-2
+
+        self.rhocrit_h2 = self.cosmo.critical_density0.to(u.Msun/u.Mpc**3.).value/self.cosmo.h**2.
+        self.rho_mean = self.cosmo.Om0 * self.rhocrit_h2
+        self.delta_crit = 1.686
+
+        self.load_Pk_LCDM(use_hmf=use_hmf)
+        self.sigma2_M = np.vectorize(self.sigma2_M)
+        self.dsigma2_dM = np.vectorize(self.dsigma2_dM)
+        self.growth_facs = {}
+        self.f_params = f_params
+
+
+        self.smooth_Tk = smooth_Tk
+    
+        self.window_function = window_function
+
+        self.LCDM = LCDM
+
+        self.k_peak = k_peak
+        self.h_peak = h_peak
+
+        self.logk = logk
+        self.N_k = N_k
+       
         #check resolution
         if (Cosmo_Parameters.kmax_CLASS < 1.0/self.RMhtab[0]):
             print('Warning! kmax_CLASS may be too small! Run CLASS with higher kmax')
 
-        self.sigmaMhtab = np.array([[ClassCosmo.sigma(RR,zz) for zz in self.zHMFtab] for RR in self.RMhtab])
-
+        self.sigmaMhtab = np.array([[ClassCosmo.sigma(RR,zz) for zz in self.zHMFtab] for RR in self.RMhtab]) 
         self._depsM=0.01 #for derivatives, relative to M
         self.dsigmadMMhtab = np.array([[(ClassCosmo.sigma(RadofMh(Cosmo_Parameters, MM*(1+self._depsM)),zz)-ClassCosmo.sigma(RadofMh(Cosmo_Parameters, MM*(1-self._depsM)),zz))/(MM*2.0*self._depsM) for zz in self.zHMFtab] for MM in self.Mhtab])
 
@@ -141,17 +411,27 @@ class HMF_interpolator:
 
 
         self.HMFtab = np.zeros_like(self.sigmaMhtab)
+        self.sigmatab = np.zeros_like(self.sigmaMhtab)
+        self.dsigmatab = np.zeros_like(self.sigmaMhtab)
 
 
-
-
+        self.gftab = np.array([self.growth_fac(zz) for zz in self.zHMFtab])
+        self.sigmaMtab = np.array([self.sigma2_M(MM) for MM in self.Mhtab])
+        self.dsigmadMtab = np.array([self.dsigma2_dM(MM) for MM in self.Mhtab])
+       
 
         for iM, MM in enumerate(self.Mhtab):
             for iz, zz in enumerate(self.zHMFtab):
-                sigmaM = self.sigmaMhtab[iM,iz]
-                dsigmadM = self.dsigmadMMhtab[iM,iz]
-
-                self.HMFtab[iM,iz] = ST_HMF(Cosmo_Parameters, MM, sigmaM, dsigmadM)
+                if LCDM:
+                    sigmaM = self.sigmaMhtab[iM,iz]
+                    dsigmadM =self.dsigmadMMhtab[iM,iz]
+                    self.HMFtab[iM,iz] = ST_HMF(Cosmo_Parameters, MM, sigmaM, dsigmadM)           
+                else:
+                    sigmaM = np.sqrt(self.sigmaMtab[iM])*self.gftab[iz]*0.9
+                    dsigmadM = self.dsigmadMtab[iM]*self.gftab[iz]/2/np.sqrt(self.sigmaMtab[iM]) 
+                    self.HMFtab[iM,iz] = ST_HMF(Cosmo_Parameters, MM, sigmaM, dsigmadM)
+                    self.sigmatab[iM,iz] = sigmaM
+                    self.dsigmatab[iM,iz] = dsigmadM
 
 
 
@@ -175,7 +455,168 @@ class HMF_interpolator:
         self.fitRztab = [np.log(Cosmo_Parameters._Rtabsmoo), self.zHMFtab]
         self.sigmaRintlog = RegularGridInterpolator(self.fitRztab, self.sigmaofRtab) #no need to log either
 
+    def load_Pk_LCDM(self, use_hmf=False):
+        if use_hmf:
+            tf = Transfer()
+            tf.transfer_model = 'EH'
+            kcdm, P = tf.k, tf.power
+        else: 
+            Pk_LCDM_file = "newLy-a_cdm_sim_model_matterpower.dat"
+            kcdm, P = np.loadtxt(Pk_LCDM_file).T
+        
+        self.Pk_LCDM = scipy.interpolate.interp1d(kcdm,P)
+     
+        
+        return
 
+    def Pk_ETHOS(self,h_peak, k_peak, c=-20):
+        if h_peak == 0.0:
+            return lambda k : T_WDM_Sebastian(k,k_peak)**2. * self.Pk_LCDM(k)
+        elif self.smooth_Tk:
+            return lambda k : T_ETHOS_smooth(k,k_peak, h_peak, c)**2. * self.Pk_LCDM(k)
+        else:
+            return lambda k : T_ETHOS(k, k_peak, h_peak, c)**2. * self.Pk_LCDM(k)
+
+
+    def sigma2_M(self, M, beta=3.6, c=3.6, vb=False):
+
+	    """
+	    Mass variance of smoothed density field, smoothed on scale R
+
+	    Args:
+	    	M: mass in units Msun
+
+	    Returns:
+	    	sigma^2(M)
+	    """
+	    if vb:
+	    	print(f'sigma2: using beta={beta}, c={c}')
+
+	    R = (3*M/(4*np.pi*self.rho_mean))**(1/3)
+	    k_peak = self.k_peak
+	    h_peak = self.h_peak
+
+	    def sigma2_integrand(k, R):
+	    	if self.LCDM == 1:
+	    	    Pk = self.Pk_LCDM(k)
+	    	    if vb:
+	    	    	print('sigma2: LCDM')
+	    	else:
+	    	    Pk = self.Pk_ETHOS(h_peak=h_peak, k_peak=k_peak)(k)
+	    	    if vb:
+	    	    	print(f'sigma2: ETHOS h_peak={h_peak}, k_peak={k_peak}')
+
+	    	if vb:
+	    	    print(f'sigma2: Using {self.window_function} window function')
+	    	if self.window_function == 'Bohr':
+	    	    W  = W_Bohr(k, R, beta, c)
+	    	elif self.window_function == 'TopHat':
+	    	    W  = W_tophat(k, R)
+	    	else:
+	    	    print('Invalid window function')
+
+	    	return k**2. * Pk * W**2.
+
+	    kmin, kmax = 1.1e-5,2000
+	    if self.logk:
+	    	k = np.logspace(np.log10(kmin), np.log10(kmax), num=self.N_k)
+	    else:
+	    	k = np.linspace(kmin, kmax, num=self.N_k)
+
+	    integral = InterpolatedUnivariateSpline(k, sigma2_integrand(k, R)).integral(kmin, kmax)
+
+	    return integral/2./np.pi**2.
+
+    def dsigma2_dM(self, M, beta=3.6, c=3.6):#, LCDM=True):
+	    """
+	    Derivative of mass variance of smoothed density field, smoothed on scale R
+	    with respect to M
+
+	    Args:
+	    	M: mass in units Msun
+
+	    Returns:
+	    	dsigma^2(M)/dM
+	    """
+	    R = (3*M/(4*np.pi*self.rho_mean))**(1/3)
+	    k_peak = self.k_peak
+	    h_peak = self.h_peak
+
+	    def dsigma2_dM_integrand(k, R):
+	    	if self.LCDM:
+	    	    Pk = self.Pk_LCDM(k)
+	    	else:
+	    	    Pk = self.Pk_ETHOS(h_peak=h_peak, k_peak=k_peak)(k)
+
+	    	if self.window_function == 'Bohr':
+	    	    W  = W_Bohr(k, R, beta, c)
+	    	    dW_dR = dW_dR_Bohr(k, R, beta, c)
+	    	elif self.window_function == 'TopHat':
+	    	    W  = W_tophat(k, R)
+	    	    dW_dR = dW_dR_tophat(k, R)
+	    	else:
+	    	    print('Invalid window function')
+
+	    	return k**2. * Pk * W * dW_dR
+
+	    kmin, kmax = 1.1e-5,2000
+	    if self.logk:
+	    	k = np.logspace(np.log10(kmin), np.log10(kmax), num=self.N_k)
+	    else:
+	    	k = np.linspace(kmin, kmax, num=self.N_k)
+
+	    integral = InterpolatedUnivariateSpline(k, dsigma2_dM_integrand(k, R)).integral(kmin, kmax)
+
+	    return 2*R/3./M * integral /2./np.pi**2.
+
+
+
+
+    def growth_fac(self, z):
+	    try:
+	    	return self.growth_facs[z]
+	    except KeyError:
+
+	    	self.growth_facs[z] = self.growth_fac_func2(z)/self.growth_fac_func2(z=0.)
+	    	return self.growth_facs[z]
+
+    def growth_fac_func2(self, z):
+	    a_z = 1./(1+z)
+
+	    def E(a):
+	    	return np.sqrt(self.cosmo.Om0/a**3. + (1-self.cosmo.Om0))
+
+	    def integrand_g(x):
+	    	return (x*E(x))**(-3.)
+
+	    int_part = quad(integrand_g,0,a_z)[0]
+
+	    return 5*self.cosmo.Om0/2 * E(a_z) * int_part
+
+    def f_nu(self, nu, f_params=None, vb=False, c=0., d=0.):
+
+        self.f_params_ETHOS       = [0.8967, 0.76921845, 0.94203037]
+        self.f_params_ST          = [0.3222, 0.3, 0.707]
+        self.f_params_Schneider18 = [0.3222, 0.3, 0.85]
+        self.f_params_Schneider13 = [0.3222, 0.3, 1]
+        if self.f_params == 'Bohr':
+            A, p, q = self.f_params_ETHOS
+        elif self.f_params == 'ST':
+            A, p, q = self.f_params_ST
+        elif self.f_params == 'Schneider18':
+            A, p, q = self.f_params_Schneider18
+        elif self.f_params == 'Schneider13':
+            A, p, q = self.f_params_Schneider13
+        if f_params is not None:
+            A, p, q = f_params
+
+        if vb:
+            print(f'f(nu) params: A={A}, p={p}, q={q}')
+
+        if c > 0.:
+            return A * np.sqrt(q*nu/np.pi/2.) * (1 + (q*nu)**(-p)) * np.exp(-q*nu/2. - (c*nu)**d) / nu
+        else:
+            return A * np.sqrt(q*nu/np.pi/2.) * (1 + (q*nu)**(-p)) * np.exp(-q*nu/2.) / nu
 
 
     def HMF_int(self, Mh, z):

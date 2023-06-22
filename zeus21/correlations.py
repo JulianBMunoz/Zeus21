@@ -539,7 +539,42 @@ class Power_Spectra:
 
         return kPf, Pf
 
+class Power_Spectra_Obs:
+    def __init__(self, Power_Spectra, klist,zlist,krange,zrange):
+    
+        self.z_center_value = np.ndarray(len(zrange)-1)
+        self.k_center_value = np.ndarray(len(krange)-1)
 
+        for i in range(len(self.z_center_value)):
+            self.z_center_value[i] = (zrange[i]-zrange[i+1])/2+zrange[i+1]
+
+        for i in range(len(self.k_center_value)):
+            self.k_center_value[i] = (krange[i]-krange[i+1])/2+krange[i+1]
+
+        
+        iz_list = []
+        ik_list = []
+
+        for j in range(len(self.z_center_value)):
+            iz_list.append(min(range(len(zlist)), key=lambda i: np.abs(zlist[i]-self.z_center_value[j])))
+        for j in range(len(self.k_center_value)):
+            ik_list.append(min(range(len(klist)), key=lambda i: np.abs(klist[i]-self.k_center_value[j])))
+
+
+        self.PS21 = np.ndarray((len(iz_list), len(ik_list)))
+
+        for i in range(len(ik_list)):
+            for j in range(len(iz_list)):
+
+
+                self.PS21[j,i] = Power_Spectra[iz_list[j],ik_list[i]]
+
+    
+
+
+
+
+ 
 #
 #     def calculate_barrier(self, Cosmo_Parameters, T21_coefficients):
 #         "Caclulate the barrier B(z, sigmaR) that the density \delta has to cross to ionize"
