@@ -240,6 +240,34 @@ def T021(Cosmo_Parameters, z):
     return 34 * pow((1+z)/16.,0.5) * (Cosmo_Parameters.omegab/0.022) * pow(Cosmo_Parameters.omegam/0.14,-0.5)
 
 
+#UNUSED bias, just for reference
+def bias_ST(Cosmo_Parameters, sigmaM):
+    # from https://arxiv.org/pdf/1007.4201.pdf Table 1
+    a_ST = Cosmo_Parameters.a_ST
+    p_ST = Cosmo_Parameters.p_ST
+    delta_crit_ST = Cosmo_Parameters.delta_crit_ST
+    nu = delta_crit_ST/sigmaM
+    nutilde = np.sqrt(a_ST) * nu
+    
+    return 1.0 + (nutilde**2 - 1.0 + 2. * p_ST/(1.0 + nutilde**(2. * p_ST) ) )/delta_crit_ST 
+
+def bias_Tinker(Cosmo_Parameters, sigmaM):
+    #from https://arxiv.org/pdf/1001.3162.pdf, Delta=200
+    delta_crit_ST = Cosmo_Parameters.delta_crit_ST
+    nu = delta_crit_ST/sigmaM
+    
+    #Tinker fit
+    _Deltahalo = 200;
+    _yhalo = np.log10(_Deltahalo)
+    _Abias = 1.0 + 0.24 * _yhalo * np.exp(-(4.0/_yhalo)**4.)
+    _abias = 0.44*_yhalo-0.88
+    _Bbias = 0.183
+    _bbias = 1.5
+    _Cbias = 0.019 + 0.107 * _yhalo + 0.19 * np.exp(-(4.0/_yhalo)**4.)
+    _cbias = 2.4
+
+    return 1.0 - _Abias*(nu**_abias/(nu**_abias + delta_crit_ST**_abias)) + _Bbias * nu**_bbias + _Cbias * nu**_cbias
+
 #UNUSED:
 # def interp2Dlinear_only_y(arrayxy, arrayz, x, y):
 #     "2D interpolator where the x axis is assumed to be an array identical to the trained x. That is, an array of 1D linear interpolators. arrayxy is [x,y]. arrayz is result. x is the x input (=arrayxy[0]),  and y the y input. Returns z result (array)"
