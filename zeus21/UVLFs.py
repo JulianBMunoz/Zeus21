@@ -8,7 +8,6 @@ UT Austin - June 2023
 """
 
 from . import cosmology
-from .xrays import Xray_class, sigma_HI, sigma_HeI
 from . import constants
 from .sfrd import SFR
 from .cosmology import bias_Tinker
