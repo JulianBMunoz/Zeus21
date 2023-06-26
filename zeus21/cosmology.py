@@ -12,7 +12,24 @@ from classy import Class
 from scipy.interpolate import RegularGridInterpolator
 
 from . import constants
+from .inputs import Cosmo_Parameters, Cosmo_Parameters_Input
+from .correlations import Correlations
 
+def cosmo_wrapper(Cosmo_Parameters_Input):
+    """
+    Wrapper function for all the cosmology. It takes Cosmo_Parameters_Input and returns:
+    Cosmo_Parameters, Class_Cosmo, Correlations, HMF_interpolator
+    """
+
+    ClassCosmo = Class()
+    ClassCosmo.compute()
+
+    ClassyCosmo = runclass(Cosmo_Parameters_Input)
+    CosmoParams = Cosmo_Parameters(Cosmo_Parameters_Input, ClassyCosmo) 
+    CorrFClass = Correlations(CosmoParams, ClassyCosmo)
+    HMFintclass = HMF_interpolator(CosmoParams,ClassyCosmo)
+
+    return CosmoParams, ClassyCosmo, CorrFClass, HMFintclass
 
 
 

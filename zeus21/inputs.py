@@ -34,21 +34,6 @@ class Cosmo_Parameters_Input:
         self.Flag_emulate_21cmfast = Flag_emulate_21cmfast #whether to emulate 21cmFAST in HMF, LyA, and X-ray opacity calculations
 
 
-def cosmo_wrapper(Cosmo_Parameters_Input):
-    """
-    Wrapper function for all the cosmology. It takes Cosmo_Parameters_Input and returns:
-    Cosmo_Parameters, Class_Cosmo, Correlations, HMF_interpolator
-    """
-
-    ClassCosmo = Class()
-    ClassCosmo.compute()
-
-    ClassyCosmo = zeus21.runclass(CosmoParams_input)
-    CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo) 
-    CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
-    HMFintclass = zeus21.HMF_interpolator(CosmoParams,ClassyCosmo)
-
-    return CosmoParams, ClassyCosmo, CorrFClass, HMFintclass
 
 class Cosmo_Parameters:
     "Class that will keep the cosmo parameters throughout"
