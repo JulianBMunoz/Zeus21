@@ -435,7 +435,7 @@ def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, z):
             growth = cosmology.growth(Cosmo_Parameters,z)
             dzgrow = z*0.01
             dgrowthdz = (cosmology.growth(Cosmo_Parameters,z+dzgrow) - cosmology.growth(Cosmo_Parameters,z-dzgrow))/(2.0 * dzgrow)
-            dMhdz = - Mh * np.sqrt(2/np.pi)/np.sqrt(sigmaMh2**2 - sigmaMh**2) *dgrowthdz/growth**2 * Cosmo_Parameters.delta_crit_ST
+            dMhdz = - Mh * np.sqrt(2/np.pi)/np.sqrt(sigmaMh2**2 - sigmaMh**2) *dgrowthdz/growth * Cosmo_Parameters.delta_crit_ST
         else:
             print("ERROR! Have to choose an accretion model in Astro_Parameters (accretion_model)")
 
