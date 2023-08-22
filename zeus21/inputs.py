@@ -131,7 +131,7 @@ class Cosmo_Parameters:
 class Astro_Parameters:
     "Class to pass the astro parameters as input"
 
-    def __init__(self, Cosmo_Parameters, astromodel = 0, epsstar = 0.1, alphastar = 0.5, betastar = -0.5, Mc = 3e11, fesc10 = 0.1, alphaesc = 0.0, \
+    def __init__(self, Cosmo_Parameters, astromodel = 0, epsstar = 0.1, dlog10epsstardz = 0.0, alphastar = 0.5, betastar = -0.5, Mc = 3e11, fesc10 = 0.1, alphaesc = 0.0, \
                  L40_xray = 3.0, E0_xray = 500., alpha_xray = -1.0, Emax_xray_norm=2000, Nalpha_lyA = 9690, Mturn_fixed = None, FLAG_MTURN_SHARP= False, \
                     accretion_model = 0, sigmaUV=0.5, C0dust = 4.43, C1dust = 1.99):
 
@@ -145,6 +145,8 @@ class Astro_Parameters:
 
         #SFR(Mh) parameters:
         self.epsstar = epsstar #epsilon_* = f* at Mc
+        self.dlog10epsstardz = dlog10epsstardz #dlog10epsilon/dz
+        self._zpivot = 8.0 #fixed, at which z we evaluate eps and dlogeps/dz
         self.alphastar = alphastar #powerlaw index for lower masses
         self.betastar = betastar #powerlaw index for higher masses, only for model 0
         self.Mc = Mc # mass at which the power law cuts, only for model 0
