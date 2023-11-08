@@ -17,7 +17,7 @@ from scipy.interpolate import interp1d
 class Cosmo_Parameters_Input:
     "Class to pass the 6 LCDM parameters as input"
 
-    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50., Flag_emulate_21cmfast = False):
+    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False):
 
         self.omegab = omegab
         self.omegac = omegac
@@ -29,6 +29,7 @@ class Cosmo_Parameters_Input:
         #other params for CLASS
         self.kmax_CLASS = kmax_CLASS
         self.zmax_CLASS = zmax_CLASS
+        self.zmin_CLASS = zmin_CLASS
         #and whether to emulate 21cmFAST
         self.Flag_emulate_21cmfast = Flag_emulate_21cmfast #whether to emulate 21cmFAST in HMF, LyA, and X-ray opacity calculations
 
@@ -49,7 +50,7 @@ class Cosmo_Parameters:
         #other params in the input
         self.kmax_CLASS = CosmoParams_input.kmax_CLASS
         self.zmax_CLASS = CosmoParams_input.zmax_CLASS
-        self.zmin_CLASS = 4.0 #when to start the HMF calcs., not an input strictly
+        self.zmin_CLASS = CosmoParams_input.zmin_CLASS #when to start the HMF calcs., not an input strictly
         self.Flag_emulate_21cmfast = CosmoParams_input.Flag_emulate_21cmfast #whether to emulate 21cmFAST in HMF, LyA, and X-ray opacity calculations
 
         #derived params
@@ -76,8 +77,12 @@ class Cosmo_Parameters:
 
 
         self._ztabinchi = np.linspace(0.0, 100. , 10000) #cheap so do a lot
-        self._chitab = ClassCosmo.z_of_r(self._ztabinchi)[0]
+        # self._chitab = ClassCosmo.z_of_r(self._ztabinchi)[0]
+        # self.zfofRint = interp1d(self._chitab, self._ztabinchi)
+        self._chitab, self._Hztab = ClassCosmo.z_of_r(self._ztabinchi) #chi and dchi/dz
         self.zfofRint = interp1d(self._chitab, self._ztabinchi)
+        self.chiofzint = interp1d(self._ztabinchi,self._chitab)
+        self.Hofzint = interp1d(self._ztabinchi,self._Hztab)
 
         _thermo = ClassCosmo.get_thermodynamics()
         self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
@@ -107,7 +112,7 @@ class Cosmo_Parameters:
 
         #HMF-related constants
         if(self.Flag_emulate_21cmfast == False): #standard, best fit ST from Schneider+
-            self.a_ST = 0.85 #0.85 to fit 1805.00021, 0.707 for original ST
+            self.a_ST = 0.707 #OG ST fit, or 0.85 to fit 1805.00021
             self.p_ST = 0.3
             self.Amp_ST = 0.3222
             self.delta_crit_ST = 1.686
@@ -126,7 +131,9 @@ class Cosmo_Parameters:
 class Astro_Parameters:
     "Class to pass the astro parameters as input"
 
-    def __init__(self, Cosmo_Parameters, astromodel = 0, epsstar = 0.1, alphastar = 0.5, betastar = -0.5, Mc = 3e11, fesc10 = 0.1, alphaesc = 0.0, L40_xray = 3.0, E0_xray = 500., alpha_xray = -1.0, Emax_xray_norm=2000, Nalpha_lyA = 9690, Mturn_fixed = None, FLAG_MTURN_SHARP= False, accretion_model = 1):
+    def __init__(self, Cosmo_Parameters, astromodel = 0, epsstar = 0.1, dlog10epsstardz = 0.0, alphastar = 0.5, betastar = -0.5, Mc = 3e11, fesc10 = 0.1, alphaesc = 0.0, \
+                 L40_xray = 3.0, E0_xray = 500., alpha_xray = -1.0, Emax_xray_norm=2000, Nalpha_lyA = 9690, Mturn_fixed = None, FLAG_MTURN_SHARP= False, \
+                    accretion_model = 0, sigmaUV=0.5, C0dust = 4.43, C1dust = 1.99):
 
 
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True and astromodel == 0):
@@ -138,9 +145,12 @@ class Astro_Parameters:
 
         #SFR(Mh) parameters:
         self.epsstar = epsstar #epsilon_* = f* at Mc
+        self.dlog10epsstardz = dlog10epsstardz #dlog10epsilon/dz
+        self._zpivot = 8.0 #fixed, at which z we evaluate eps and dlogeps/dz
         self.alphastar = alphastar #powerlaw index for lower masses
         self.betastar = betastar #powerlaw index for higher masses, only for model 0
         self.Mc = Mc # mass at which the power law cuts, only for model 0
+        self.sigmaUV = sigmaUV #stochasticity (gaussian rms) in the halo-galaxy connection P(MUV | Mh) - TODO: only used in UVLF not sfrd
 
         if self.astromodel == 0: #GALUMI-like
             self.accretion_model = accretion_model #0 = exponential, 1= EPS #choose the accretion model. Default = EPS
@@ -190,6 +200,10 @@ class Astro_Parameters:
             self.FLAG_MTURN_FIXED = True #whether to fix Mturn or use Matom(z) at each z
             self.Mturn_fixed = Mturn_fixed
             self.FLAG_MTURN_SHARP = FLAG_MTURN_SHARP #whether to do sharp cut at Mturn_fixed or regular exponential cutoff. Only active if FLAG_MTURN_FIXED and turned on by hand.
+
+        #dust parameters for UVLFs:
+        self.C0dust, self.C1dust = C0dust, C1dust #4.43, 1.99 is Meurer99; 4.54, 2.07 is Overzier01
+        self._kappaUV = 1.15e-28 #SFR/LUV, value from Madau+Dickinson14, fully degenerate with epsilon
 
 
 
