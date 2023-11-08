@@ -108,3 +108,9 @@ FLAG_DO_BUBBLES = False #whether to do xHI fluctuations (TODO. Global xHI is alw
 #RSD related
 MU_AVG = 0.6 #recovers (1+mu^2)^2 = 1.87, and very close for (1+mu^2) [for cross terms]
 MU_LoS = 1.0 #only fully LoS modes
+
+
+#UVLF related
+_MAGMAX = 10 #max abs magnitude to avoid infs
+FLAG_RENORMALIZE_LUV = False #whether to renormalize the lognormal LUV with sigmaUV to recover <LUV> or otherwise <MUV>. Recommend False.
+NZ_TOINT = 3 #how many zs around <z> with z_rms we use to predict. Only in HMF since the rest do not vary much.

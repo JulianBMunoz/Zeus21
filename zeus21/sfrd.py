@@ -444,6 +444,13 @@ def Matom(z):
     "Returns Matom as a function of z"
     return 3.3e7 * pow((1.+z)/(21.),-3./2)
 
+#fstar = Mstardot/Mhdot, parametrizes as you wish
+def fstarofz(Astro_Parameters, Cosmo_Parameters, z, Mhlist):
+    epsstar_ofz = Astro_Parameters.epsstar * 10**(Astro_Parameters.dlog10epsstardz * (z-Astro_Parameters._zpivot) )
+    return 2.0 * Cosmo_Parameters.OmegaB/Cosmo_Parameters.OmegaM * epsstar_ofz\
+        /(pow(Mhlist/Astro_Parameters.Mc,- Astro_Parameters.alphastar) + pow(Mhlist/Astro_Parameters.Mc,- Astro_Parameters.betastar) )
+
+
 #Only PopII for now (TODO, add PopIII)
 def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, z):
     "SFR in Msun/yr at redshift z. Evaluated at the halo masses Mh [Msun] of the HMF_interpolator, given Astro_Parameters"
@@ -457,7 +464,7 @@ def SFR(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, z):
             fduty = np.heaviside(Mh - Astro_Parameters.Mturn_fixed, 0.5)
 
     if(Astro_Parameters.astromodel == 0): #GALLUMI-like
-        fstarM = 2.0 * Cosmo_Parameters.OmegaB/Cosmo_Parameters.OmegaM * Astro_Parameters.epsstar/(pow(Mh/Astro_Parameters.Mc,- Astro_Parameters.alphastar) + pow(Mh/Astro_Parameters.Mc,- Astro_Parameters.betastar) )
+        fstarM = fstarofz(Astro_Parameters, Cosmo_Parameters, z, Mh)
 
         if(Astro_Parameters.accretion_model == 0): #exponential accretion
             dMhdz = Mh * constants.ALPHA_accretion_exponential
