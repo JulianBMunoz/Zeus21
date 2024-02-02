@@ -12,6 +12,7 @@ UT Austin and Harvard CfA - January 2023
 ######################
 
 
+
 precisionboost = 1.0 #makes integrals take more points for boost in precision. Baseline = 1.0
 FLAG_FORCE_LINEAR_CF = 0 #0 to do standard calculation, 1 to force linearization of correlation function
 
@@ -54,7 +55,7 @@ EN_ION_HI = 13.6 #eV
 EN_ION_HeI = 24.59 #eV
 sigma0norm = 1e-18 #cm^2 normalization of xray cross sections
 
-ZMAX_INTEGRAL = 35.0 #at which z we start the integrals. We take 35. as fiducial since there is not much SFRD. Make sure to test if you have exotic cosmology/astrophysics
+ZMAX_INTEGRAL = 50.0 #35.0 #at which z we start the integrals. We take 35. as fiducial since there is not much SFRD. Make sure to test if you have exotic cosmology/astrophysics
 
 #LyA related constants
 wavelengthLyC = 91.1753 ##lyman continuum in nm
@@ -74,6 +75,15 @@ widthLyA=50*1e6 #Hz, from astro-ph/0507102
 widthLyAcm = widthLyA/(c_kms*1e5) #cm
 Tstar_21 = 0.0682 #T* in K for the 21cm transition
 A10_21 = 2.85e-15 #1/s, Einstein 10 coeff for HI
+
+############################################################################################
+
+Tk_HH = [1, 2, 4, 6, 8, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 500, 700, 1000, 2000, 3000, 5000, 7000, 10000]
+k_HH = [1.38e-13, 1.43e-13, 2.71e-13, 6.60e-13, 1.47e-12, 2.88e-12, 9.10e-12, 1.78e-11, 2.73e-11, 3.67e-11, 5.38e-11, 6.86e-11, 8.14e-11, 9.25e-11, 1.02e-10, 1.11e-10, 1.19e-10, 1.75e-10, 2.09e-10, 2.56e-10, 2.91e-10, 3.31e-10, 4.27e-10, 4.97e-10, 6.03e-10, 6.87e-10, 7.87e-10]
+Tk_He = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 7000, 10000, 15000, 20000]
+k_He = [2.39e-10, 3.37e-10, 5.30e-10, 7.46e-10, 1.05e-9, 1.63e-9, 2.26e-9, 3.11e-9, 4.59e-9, 5.92e-9, 7.15e-9, 7.71e-9, 8.17e-9, 8.32e-9, 8.37e-9, 8.29e-9, 8.11e-9]
+
+############################################################################################
 
 
 #whether to renormalize the C2 oefficients (appendix in 2302.08506)
