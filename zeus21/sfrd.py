@@ -177,6 +177,7 @@ class get_T21_coefficients:
 
                 sigma_times_en = Xrays.atomfractions[0] * sigma_HI(_Energylist) * (_Energylist - Xrays.atomEnIon[0])
                 sigma_times_en += Xrays.atomfractions[1] * sigma_HeI(_Energylist) * (_Energylist - Xrays.atomEnIon[1])
+                sigma_times_en /= np.sum(Xrays.atomfractions)#to normalize per baryon, instead of per Hydrogen nucleus
                 #HI and HeII separate. Notice Energy (and not Energy'), since they get absorbed at the zp frame
 
 
@@ -249,7 +250,7 @@ class get_T21_coefficients:
         #partial ionization from Xrays. Fit to Furlanetto&Stoever
         fion = 0.4 * np.exp(-cosmology.xefid(Cosmo_Parameters, self.zintegral)/0.2)
 
-        atomEnIonavg = Xrays.atomfractions[0] *  Xrays.atomEnIon[0] + Xrays.atomfractions[1] *  Xrays.atomEnIon[1]
+        atomEnIonavg = (Xrays.atomfractions[0] *  Xrays.atomEnIon[0] + Xrays.atomfractions[1] *  Xrays.atomEnIon[1])/(Xrays.atomfractions[0] + Xrays.atomfractions[1])
         # atomEnIonavg = Xrays.atomfractions[0] *  Xrays.atomEnIon[0] * sigma_HI(1000.) + Xrays.atomfractions[1] *  Xrays.atomEnIon[1]* sigma_HeI(1000.)
         # atomEnIonavg/=( sigma_HI(1000.) + sigma_HeI(1000.) )
 
@@ -287,8 +288,9 @@ class get_T21_coefficients:
         self.Jalpha_avg = self.coeff1LyAzp*np.sum(self.coeff2LyAzpRR,axis=1) #units of 1/(cm^2 s Hz sr)
 
         self.T_CMB = cosmology.Tcmb(ClassCosmo, self.zintegral)
+        
 
-        _tau_GP = 3./2.*Cosmo_Parameters.f_H * cosmology.n_baryon(Cosmo_Parameters,self.zintegral)*constants.Mpctocm/cosmology.HubinvMpc(Cosmo_Parameters,self.zintegral) * (constants.wavelengthLyA/1e7)**3 * constants.widthLyAcm * (1.0 - self.xe_avg)  #~3e5 at z=6
+        _tau_GP = 3./2.*cosmology.n_H(Cosmo_Parameters,self.zintegral)*constants.Mpctocm/cosmology.HubinvMpc(Cosmo_Parameters,self.zintegral) * (constants.wavelengthLyA/1e7)**3 * constants.widthLyAcm * (1.0 - self.xe_avg)  #~3e5 at z=6
 
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             _tau_GP/=Cosmo_Parameters.f_H #for some reason they multiuply by N0 (all baryons) and not NH0.
@@ -341,7 +343,7 @@ class get_T21_coefficients:
 
 
         #EoR part here:
-        _trec0 = 1.0/(constants.alphaB * cosmology.n_baryon(Cosmo_Parameters,0) * Astro_Parameters._clumping)#t_recombination  at z=0, in sec
+        _trec0 = 1.0/(constants.alphaB * cosmology.n_H(Cosmo_Parameters,0) *(1 + Cosmo_Parameters.x_He) * Astro_Parameters._clumping)#t_recombination  at z=0, in sec
         _recexp = 1.0/(_trec0 * np.sqrt(Cosmo_Parameters.OmegaM) * cosmology.Hubinvyr(Cosmo_Parameters,0) / constants.yrTos)# = 1/(_trec0 * H0 * sqrt(OmegaM) ), dimless. Assumes matter domination and constant clumping. Can be modified to power-law clumping changing the powerlaw below from 3/2
 
         self.coeffQzp = self.dlogzint*self.zintegral/cosmology.Hubinvyr(Cosmo_Parameters,self.zintegral)/(1+self.zintegral) #Deltaz * dt/dz. Units of 1/yr, inverse of niondot
@@ -386,7 +388,7 @@ def tau_reio(Cosmo_Parameters, T21_coefficients):
 
 
     _zlistlowz = np.linspace(0,T21_coefficients.zmin,100)
-    _nelistlowz = cosmology.n_baryon(Cosmo_Parameters,_zlistlowz)*(Cosmo_Parameters.f_H + Cosmo_Parameters.f_He + Cosmo_Parameters.f_He * np.heaviside(constants.zHeIIreio - _zlistlowz,0.5))
+    _nelistlowz = cosmology.n_H(Cosmo_Parameters,_zlistlowz)*(1.0 + Cosmo_Parameters.x_He + Cosmo_Parameters.x_He * np.heaviside(constants.zHeIIreio - _zlistlowz,0.5))
     _distlistlowz = 1.0/cosmology.HubinvMpc(Cosmo_Parameters,_zlistlowz)/(1+_zlistlowz)
 
     _lowzint = constants.sigmaT * np.trapz(_nelistlowz*_distlistlowz,_zlistlowz) * constants.Mpctocm
@@ -395,7 +397,7 @@ def tau_reio(Cosmo_Parameters, T21_coefficients):
 
     _zlisthiz = T21_coefficients.zintegral
 
-    _nelistlhiz = cosmology.n_baryon(Cosmo_Parameters,_zlisthiz) * (1.0 - T21_coefficients.xHI_avg)
+    _nelistlhiz = cosmology.n_H(Cosmo_Parameters,_zlisthiz) * (1 + Cosmo_Parameters.x_He) * (1.0 - T21_coefficients.xHI_avg)
     _distlisthiz = 1.0/cosmology.HubinvMpc(Cosmo_Parameters,_zlisthiz)/(1+_zlisthiz)
 
     _hizint = constants.sigmaT * np.trapz(_nelistlhiz*_distlisthiz,_zlisthiz) * constants.Mpctocm

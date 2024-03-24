@@ -62,9 +62,9 @@ def rho_baryon(Cosmo_Parameters,z):
 #\rho_baryon in Msun/Mpc^3 as a function of z
     return Cosmo_Parameters.OmegaB * Cosmo_Parameters.rhocrit * pow(1+z,3.0)
 
-def n_baryon(Cosmo_Parameters, z):
-#density of baryons in 1/cm^3
-    return rho_baryon(Cosmo_Parameters, z) / Cosmo_Parameters.mu_baryon_Msun / (constants.Mpctocm**3.0)
+def n_H(Cosmo_Parameters, z):
+#density of hydrogen nuclei (neutral or ionized) in 1/cm^3
+    return rho_baryon(Cosmo_Parameters, z) *( 1- Cosmo_Parameters.Y_He)/(constants.mH_GeV/constants.MsuntoGeV) / (constants.Mpctocm**3.0)
 
 
 
