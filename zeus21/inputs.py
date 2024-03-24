@@ -62,10 +62,9 @@ class Cosmo_Parameters:
         self.OmegaB = ClassCosmo.Omega_b()
 
         self.Y_He = ClassCosmo.get_current_derived_parameters(['YHe'])['YHe']
-        self.f_He = self.Y_He/4.0/(1.0 - 3.0/4.0 * self.Y_He) #=nHe/nb
-        self.f_H = (1.0 - self.Y_He)/(1.0 - 3.0/4.0 * self.Y_He) #=nH/nb
-
-        self.mu_baryon = (self.f_H + self.f_He * 4.) * 0.94 #mproton ~ 0.94 GeV
+        self.x_He = self.Y_He/4.0/(1.0 - self.Y_He) #=nHe/nH
+        
+        self.mu_baryon = (1 + self.x_He * 4.)/(1 + self.x_He) * constants.mH_GeV #mproton ~ 0.94 GeV
         self.mu_baryon_Msun = self.mu_baryon/constants.MsuntoGeV
 
 
