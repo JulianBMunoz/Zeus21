@@ -39,8 +39,11 @@ class get_T21_coefficients:
         self.SFRD_avg = np.zeros_like(self.zintegral)
         self.SFRDbar2D = np.zeros((self.Nzintegral, Cosmo_Parameters.NRs)) #SFR at z=zprime when averaged over a radius R (so up to a higher z)
         self.gamma_index2D = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma delta)
+        self.gamma2_index2D = np.zeros_like(self.SFRDbar2D) #quadratic fit gamma like ~ exp(\gamma \delta + \gamma_2 \delta^2)
+        
         self.niondot_avg = np.zeros_like(self.zintegral) #\dot nion at each z (int d(SFRD)/dM *fesc(M) dM)/rhobaryon
-        self.gamma_Niondot_index2D = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma delta)
+        self.gamma_Niondot_index2D = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma \delta)
+        self.gamma2_Niondot_index2D = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma \delta + \gamma_2 \delta^2)
 
         self.ztabRsmoo = np.zeros_like(self.SFRDbar2D) #z's that correspond to each Radius R around each zp
 
@@ -64,8 +67,8 @@ class get_T21_coefficients:
 
 
         #and EPS factors
-        Nsigmad = 0.2 #how many sigmas we explore
-        Nds = 2 #how many deltas
+        Nsigmad = .2 #how many sigmas we explore (.2 originally)
+        Nds = 3 #how many deltas (2 originally)
         deltatab_norm = np.linspace(-Nsigmad,Nsigmad,Nds)
 
 
@@ -198,6 +201,7 @@ class get_T21_coefficients:
                     deltatab = deltatab_norm * sigmaR
 
                 SFRD_delta = np.zeros_like(deltatab)
+                Niondot_delta = np.zeros_like(deltatab)
 
                 nu0 = Cosmo_Parameters.delta_crit_ST/sigmacurr #the EPS delta = 0 result. Note 1/sigmacurr and not sigmamod
                 nu0[indextoobig]=1.0 #set to 1 to avoid under/overflows, we don't sum over those masses since they're too big
@@ -221,10 +225,38 @@ class get_T21_coefficients:
 
                     integrand_EPS *= (1.0 + dd) #to convert from Lagrangian to Eulerian
                     SFRD_delta[idelta] = np.trapz(integrand_EPS, HMF_interpolator.logtabMh)
+                    Niondot_delta[idelta] = np.trapz(integrand_EPS * fesctab, HMF_interpolator.logtabMh) #ionizing emissivity (Niondot) is basically SFRD but with an escape fraction that varies with halo mass
 
 
+                midpoint = len(SFRD_delta)//2
 
-                self.gamma_index2D[izp,iR] = np.log(SFRD_delta[-1]/SFRD_delta[0])/(deltatab[-1] - deltatab[0]) #notice its der wrt delta, not delta/sigma or growth
+                self.gamma_index2D[izp,iR] = np.log(SFRD_delta[midpoint+1]/SFRD_delta[midpoint-1])/(deltatab[midpoint+1] - deltatab[midpoint-1]) #notice its der wrt delta, not delta/sigma or growth
+                
+                self.gamma_Niondot_index2D[izp, iR] = np.log(Niondot_delta[midpoint+1]/Niondot_delta[midpoint-1])/(deltatab[midpoint+1] - deltatab[midpoint-1])
+                
+                
+                '''if (izp == 35)*(iR == 16): #z~10 and R~10Mpc 
+                    print(izp)
+                    print(iR)
+                    print(zp)
+                    print(RR)
+                    self.testSFRD = SFRD_delta
+                    self.testdeltatab = deltatab
+                    self.testNiondot = Niondot_delta
+                    self.testfesctab = fesctab'''
+                    
+                
+                
+                der1 =  np.log(SFRD_delta[midpoint]/SFRD_delta[midpoint-1])/(deltatab[midpoint] - deltatab[midpoint-1]) #ln(y2/y1)/(x2-x1)
+                der2 =  np.log(SFRD_delta[midpoint+1]/SFRD_delta[midpoint])/(deltatab[midpoint+1] - deltatab[midpoint]) #ln(y3/y2)/(x3-x2)
+                
+                self.gamma2_index2D[izp,iR] = (der2 - der1)/(deltatab[midpoint+1] - deltatab[midpoint-1]) #second derivative: (der2-der1)/((x3-x1)/2)
+                
+                der1_N = np.log(Niondot_delta[midpoint]/Niondot_delta[midpoint-1])/(deltatab[midpoint] - deltatab[midpoint-1])
+                der2_N =  np.log(Niondot_delta[midpoint+1]/Niondot_delta[midpoint])/(deltatab[midpoint+1] - deltatab[midpoint])
+                
+                self.gamma2_Niondot_index2D[izp, iR] = (der2_N - der1_N)/(deltatab[midpoint+1] - deltatab[midpoint-1])
+                
 
 
             self.coeff2LyAzpRR[izp] = self.Rtabsmoo * self.dlogRR * self.SFRDbar2D[izp,:] * LyAintegral/ constants.yrTos/constants.Mpctocm**2
@@ -307,6 +339,11 @@ class get_T21_coefficients:
             self._coeff_Ja_xa_0 = 1.66e11/(1+self.zintegral) #They use a fixed (and slightly ~10% off) value.
         else:
             self._coeff_Ja_xa_0 = 8.0*np.pi*(constants.wavelengthLyA/1e7)**2 * constants.widthLyA * constants.Tstar_21/(9.0*constants.A10_21*self.T_CMB) #units of (cm^2 s Hz sr), convert from Ja to xa. should give 1.81e11/(1+self.zintegral) for Tcmb_0=2.725 K
+            
+        #collision coefficient fh(1-x_e)
+        self.xc_HH = Cosmo_Parameters.f_H * (1.0 - self.xe_avg) * cosmology.n_baryon(Cosmo_Parameters, self.zintegral) * np.interp(self.Tk_avg, constants.Tk_HH, constants.k_HH) / constants.A10_21 * constants.Tstar_21 / cosmology.Tcmb(ClassCosmo, self.zintegral)
+        self.xc_He = self.xe_avg * cosmology.n_baryon(Cosmo_Parameters, self.zintegral) * np.interp(self.Tk_avg, constants.Tk_He, constants.k_He) / constants.A10_21 * constants.Tstar_21 / cosmology.Tcmb(ClassCosmo, self.zintegral) #xe
+        self.xc_avg = self.xc_HH + self.xc_He
 
 
         if(constants.FLAG_WF_ITERATIVE==True): #iteratively find Tcolor and Ts. Could initialize one to zero, but this should converge faster
@@ -316,7 +353,7 @@ class get_T21_coefficients:
             self.invTcol_avg = 1.0 / self.Tk_avg
             self.coeff_Ja_xa = self._coeff_Ja_xa_0 * Salpha_exp(self.zintegral, self.Tk_avg, self.xe_avg)
             self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
-            self._invTs_avg = (1.0/self.T_CMB+self.xa_avg*self.invTcol_avg)/(1+self.xa_avg)
+            self._invTs_avg = (1.0/self.T_CMB+self.xa_avg*self.invTcol_avg+self.xc_avg*self.invTk_avg)/(1+self.xa_avg+self.xc_avg)
 
             _invTs_tryfirst = self._invTs_avg #so the loop below does not trigger
 
@@ -334,7 +371,7 @@ class get_T21_coefficients:
             self.invTcol_avg = 1.0/self.Tk_avg + constants.gcolorfactorHirata * 1.0/self.Tk_avg * (_invTs_tryfirst - 1.0/self.Tk_avg)
 
             #and finally Ts^-1
-            self._invTs_avg = (1.0/self.T_CMB+self.xa_avg * self.invTcol_avg)/(1+self.xa_avg)
+            self._invTs_avg = (1.0/self.T_CMB+self.xa_avg * self.invTcol_avg + self.xc_avg * 1.0/self.Tk_avg)/(1+self.xa_avg+self.xc_avg)
 
 
 
@@ -378,7 +415,7 @@ class get_T21_coefficients:
 
 
         #and finally, get the signal
-        self.T21avg = cosmology.T021(Cosmo_Parameters,self.zintegral) * self.xa_avg/(1.0 + self.xa_avg) * (1.0 - self.T_CMB * self.invTcol_avg) * self.xHI_avg
+        self.T21avg = cosmology.T021(Cosmo_Parameters,self.zintegral) * (self.xa_avg + self.xc_avg)/(1.0 + self.xa_avg + self.xc_avg) * (1.0 - self.T_CMB * self.invTcol_avg) * self.xHI_avg
 
 
 
