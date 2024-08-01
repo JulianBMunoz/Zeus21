@@ -45,7 +45,7 @@ def test_cosmo():
     assert(np.sqrt(CosmoParams.OmegaR) * H0test * (1+zzRad)**2.0 == pytest.approx(HzRadtest, 0.01))
 
 
-    assert(0. <= n_H(CosmoParams,0.0) <= 1e-6) #make sure it's reasonable ~1e-7
+    assert(0. <= n_baryon(CosmoParams,0.0) <= 1e-6) #make sure it's reasonable ~1e-7
 
     assert(2.5<= Tcmb(ClassyCosmo,0.0) <= 3.0) #make sure it's reasonable 2.725 K
 

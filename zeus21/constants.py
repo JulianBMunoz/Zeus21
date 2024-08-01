@@ -5,6 +5,9 @@ Keep here all global flags, numerical constants, and conversion factors/units.
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
+
 """
 
 ######################
@@ -37,9 +40,9 @@ MsunToMpc = MsunToKm * KmToMpc
 Msuntogram = 1.989e33
 GramtoGeV = 1/(6.022e23)
 MsuntoGeV = Msuntogram/GramtoGeV
-mH_GeV = 0.94
+mprotoninMsun = 0.94/MsuntoGeV
 
-c_kms = 299792
+c_kms = 299792.458
 
 yrTos = 3.154e7
 Mpctoyr = MpcToKm/c_kms/yrTos

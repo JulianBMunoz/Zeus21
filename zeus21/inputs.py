@@ -5,6 +5,8 @@ Takes inputs and stores them in useful classes
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
 """
 
 from . import constants
@@ -17,7 +19,7 @@ from scipy.interpolate import interp1d
 class Cosmo_Parameters_Input:
     "Class to pass the 6 LCDM parameters as input"
 
-    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False):
+    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False, USE_RELATIVE_VELOCITIES = False):
 
         self.omegab = omegab
         self.omegac = omegac
@@ -32,6 +34,9 @@ class Cosmo_Parameters_Input:
         self.zmin_CLASS = zmin_CLASS
         #and whether to emulate 21cmFAST
         self.Flag_emulate_21cmfast = Flag_emulate_21cmfast #whether to emulate 21cmFAST in HMF, LyA, and X-ray opacity calculations
+        
+        ###HectorAfonsoCruz: Flag whether to use v_cb
+        self.USE_RELATIVE_VELOCITIES = USE_RELATIVE_VELOCITIES
 
 
 
@@ -60,11 +65,18 @@ class Cosmo_Parameters:
         self.OmegaR = ClassCosmo.Omega_r()
         self.OmegaL = ClassCosmo.Omega_Lambda()
         self.OmegaB = ClassCosmo.Omega_b()
-
-        self.Y_He = ClassCosmo.get_current_derived_parameters(['YHe'])['YHe']
-        self.x_He = self.Y_He/4.0/(1.0 - self.Y_He) #=nHe/nH
         
-        self.mu_baryon = (1 + self.x_He * 4.)/(1 + self.x_He) * constants.mH_GeV #mproton ~ 0.94 GeV
+        ###HectorAfonsoCruz: added z_rec
+        self.z_rec = ClassCosmo.get_current_derived_parameters(['z_rec'])['z_rec']
+        
+        ###HectorAfonsoCruz: added v_cb flag
+        self.USE_RELATIVE_VELOCITIES = CosmoParams_input.USE_RELATIVE_VELOCITIES
+        
+        self.Y_He = ClassCosmo.get_current_derived_parameters(['YHe'])['YHe']
+        self.f_He = self.Y_He/4.0/(1.0 - 3.0/4.0 * self.Y_He) #=nHe/nb
+        self.f_H = (1.0 - self.Y_He)/(1.0 - 3.0/4.0 * self.Y_He) #=nH/nb
+
+        self.mu_baryon = (self.f_H + self.f_He * 4.) * 0.94 #mproton ~ 0.94 GeV
         self.mu_baryon_Msun = self.mu_baryon/constants.MsuntoGeV
 
 
@@ -75,7 +87,7 @@ class Cosmo_Parameters:
 
 
 
-        self._ztabinchi = np.linspace(0.0, 100. , 10000) #cheap so do a lot
+        self._ztabinchi = np.linspace(0.0, 1100. , 10000) #cheap so do a lot
         # self._chitab = ClassCosmo.z_of_r(self._ztabinchi)[0]
         # self.zfofRint = interp1d(self._chitab, self._ztabinchi)
         self._chitab, self._Hztab = ClassCosmo.z_of_r(self._ztabinchi) #chi and dchi/dz
@@ -100,8 +112,10 @@ class Cosmo_Parameters:
         if(self.Flag_emulate_21cmfast==True):
             self.Rsmmin = 0.62*1.5 #same as minmum R in 21cmFAST for their standard 1.5 Mpc cell resolution. 0.62 is their 'L_FACTOR'
             self.Rsmmax = 500. #same as R_XLy_MAX in 21cmFAST. Too low?
+            self.NRs = np.floor(90*constants.precisionboost).astype(int) ###HAC: this needs to change to 150 to resolve the VAOs, but 45 to match 21cmfast resolution
+        else:
+            self.NRs = np.floor(90*constants.precisionboost).astype(int) ###HAC: this needs to change to 150 to resolve the VAOs, but 45 to match 21cmfast resolution
 
-        self.NRs = np.floor(45*constants.precisionboost).astype(int)
         self._Rtabsmoo = np.logspace(np.log10(self.Rsmmin), np.log10(self.Rsmmax), self.NRs) # Smoothing Radii in Mpc com
         self._dlogRR = np.log(self.Rsmmax/self.Rsmmin)/(self.NRs-1.0)
 
@@ -122,17 +136,74 @@ class Cosmo_Parameters:
             self.Amp_ST = 0.353
             self.delta_crit_ST = 1.68
             self.a_corr_EPS = 1.0
+            
+#            ###HAC: DELETE BELOW!!!!! Just to check Visbal+14 LW background
+#            self.a_ST = 0.707 #OG ST fit, or 0.85 to fit 1805.00021
+#            self.p_ST = 0.3
+#            self.Amp_ST = 0.3222
+#            self.delta_crit_ST = 1.686
+#            self.a_corr_EPS = 1.0
         else:
             print("Error! Have to set either Flag_emulate_21cmfast = True or False")
 
 
 
+###Hector Afonso Cruz: Added PopIII parameters in Astro_Parameters
 class Astro_Parameters:
     "Class to pass the astro parameters as input"
 
-    def __init__(self, Cosmo_Parameters, astromodel = 0, epsstar = 0.1, dlog10epsstardz = 0.0, alphastar = 0.5, betastar = -0.5, Mc = 3e11, fesc10 = 0.1, alphaesc = 0.0, \
-                 L40_xray = 3.0, E0_xray = 500., alpha_xray = -1.0, Emax_xray_norm=2000, Nalpha_lyA = 9690, Mturn_fixed = None, FLAG_MTURN_SHARP= False, \
-                    accretion_model = 0, sigmaUV=0.5, C0dust = 4.43, C1dust = 1.99):
+    def __init__(self, Cosmo_Parameters, 
+                    astromodel = 0,
+                    accretion_model = 1,
+
+                    alphastar = 0.5,
+                    betastar = -0.5,
+                    epsstar = 0.1,
+                    Mc = 3e11,
+                    dlog10epsstardz = 0.0,
+
+                    fesc10 = 0.1,
+                    alphaesc = 0.0,
+                    L40_xray = 3.0,
+                    E0_xray = 500.,
+                    alpha_xray = -1.0,
+                    Emax_xray_norm=2000,
+
+                    Nalpha_lyA_II = 9690,
+                    Nalpha_lyA_III = 17900,
+
+                    Mturn_fixed = None,
+                    FLAG_MTURN_SHARP= False,
+
+                    C0dust = 4.43,
+                    C1dust = 1.99,
+
+                    sigmaUV=0.5,
+
+                    USE_POPIII = False, 
+
+                    alphastar_III = 0, 
+                    betastar_III = 0,
+                    fstar_III = 10**(-2.5),
+                    Mc_III = 1e7,
+                    dlog10epsstardz_III = 0.0,
+                 
+                    fesc7_III = 10**(-1.35),
+                    alphaesc_III = -0.3,
+                    L40_xray_III = 3.0,
+                    E0_xray_III = 500.,
+                    alpha_xray_III = -1.0,
+                    Emax_xray_norm_III = 2000,
+                    
+                    USE_LW_FEEDBACK = False,
+                    A_LW = 2.0,
+                    beta_LW = 0.6,
+                 
+                    A_vcb = 1.0,
+                    beta_vcb = 1.8,
+                 
+
+                ):
 
 
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True and astromodel == 0):
@@ -141,8 +212,43 @@ class Astro_Parameters:
         else:
             self.astromodel = astromodel # which SFR model we use. 0=Gallumi-like, 1=21cmfast-like
 
+        ###HectorAfonsoCruz: Added PopIII parameters:
+        self.USE_POPIII = USE_POPIII
+        
+        self.alphastar_III = alphastar_III
+        self.betastar_III = betastar_III
+        self.fstar_III = fstar_III
+        self.Mc_III = Mc_III
+        self.dlog10epsstardz_III = dlog10epsstardz_III
+        self._zpivot_III = 8.0  #fixed, at which z we evaluate eps and dlogeps/dz
+        
+        self.fesc7_III = fesc7_III
+        self.alphaesc_III = alphaesc_III
+        self.L40_xray_III = L40_xray_III
+        self.E0_xray_III = E0_xray_III
+        self.alpha_xray_III = alpha_xray_III
+        self.Emax_xray_norm_III = Emax_xray_norm_III
+        
+        ###HectorAfonsoCruz: Using LW feedback and fixing parameters
+        self.USE_LW_FEEDBACK = USE_LW_FEEDBACK
+        
+        if self.USE_LW_FEEDBACK == True:
+            self.A_LW = A_LW
+            self.beta_LW = beta_LW
+        else:
+            self.A_LW = 0.0
+            self.beta_LW = 0.0
+        
+        ###HectorAfonsoCruz: Using Relative Velocities and fixing parameters
+        if Cosmo_Parameters.USE_RELATIVE_VELOCITIES == True:
+            self.A_vcb = A_vcb
+            self.beta_vcb = beta_vcb
+        else:
+            self.A_vcb = 0.0
+            self.beta_vcb = 0.0
 
-        #SFR(Mh) parameters:
+        
+        #SFR(Mh) parameters: 
         self.epsstar = epsstar #epsilon_* = f* at Mc
         self.dlog10epsstardz = dlog10epsstardz #dlog10epsilon/dz
         self._zpivot = 8.0 #fixed, at which z we evaluate eps and dlogeps/dz
@@ -151,12 +257,13 @@ class Astro_Parameters:
         self.Mc = Mc # mass at which the power law cuts, only for model 0
         self.sigmaUV = sigmaUV #stochasticity (gaussian rms) in the halo-galaxy connection P(MUV | Mh) - TODO: only used in UVLF not sfrd
 
+        self.fstarmax = 1.0 #where we cap it
+        
         if self.astromodel == 0: #GALUMI-like
             self.accretion_model = accretion_model #0 = exponential, 1= EPS #choose the accretion model. Default = EPS
         elif self.astromodel == 1: #21cmfast-like, ignores Mc and beta and has a t* later in SFR()
             self.tstar = 0.5
             self.fstar10 = self.epsstar
-            self.fstarmax = 1.0 #where we cap it
         else:
             print('ERROR, need to pick astromodel')
 
@@ -189,8 +296,13 @@ class Astro_Parameters:
         self.dlogEnergy = (self._log10EMAX_INTEGRATE - self._log10EMIN_INTEGRATE)/(self.Nen_xray-1.0)*np.log(10.) #to get dlog instead of dlog10
 
 
-        self.N_alpha_perbaryon=Nalpha_lyA #number of photons between LyA and Ly Cont. per baryon (from LB05)
-        self.N_ion_perbaryon = 5000 #fixed for PopII-type (Salpeter)
+        self.N_alpha_perbaryon_II=Nalpha_lyA_II #number of photons between LyA and Ly Cont. per baryon (from LB05)
+        self.N_alpha_perbaryon_III=Nalpha_lyA_III #number of photons between LyA and Ly Cont. per baryon (from LB05)
+        self.N_ion_perbaryon_II = 5000 #fixed for PopII-type (Salpeter)
+        if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
+            self.N_ion_perbaryon_III = 44000 #fixed for PopIII-type, from Klessen & Glover 2023 Table A2 (2303.12500)
+        elif(Cosmo_Parameters.Flag_emulate_21cmfast==False):
+            self.N_ion_perbaryon_III = 52480 #fixed for PopIII-type, from Klessen & Glover 2023 Table A2 (2303.12500)
 
 
         if(Mturn_fixed == None):
@@ -218,7 +330,7 @@ class Astro_Parameters:
         #do not cut at higher energies since they redshift into <2 keV band
 
 
-    def SED_LyA(self, nu_in):
+    def SED_LyA_II(self, nu_in):
         "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
 
         nucut = constants.freqLyB #above and below this freq different power laws
@@ -241,6 +353,67 @@ class Astro_Parameters:
                 result[inu] = normabove * (currnu/nucut)**indexabove
             else:
                 print("Error in SED_LyA, whats the frequency Kenneth?")
+                ###HectorAfonsoCruz: Who the fuck is Kenneth
+                ###HectorAfonsoCruz: Update: OHH IT'S AN R.E.M. SONG
 
 
         return result/nucut #extra 1/nucut because dnu, normalizes the integral
+        
+    def SED_LyA_III(self, nu_in):
+        "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
+
+        nucut = constants.freqLyB #above and below this freq different power laws
+        amps = np.array([0.56,0.44]) #Approx following the stellar spectra of BL05. Normalized to unity
+
+        indexbelow = 1.29 #if one of them zero worry about normalization
+        normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
+        indexabove = 0.2
+        normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
+
+        nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
+
+        result = np.zeros_like(nulist)
+        for inu, currnu in enumerate(nulist):
+            if (currnu<constants.freqLyA or currnu>=constants.freqLyCont):
+                result[inu] = 0.0
+            elif (currnu < nucut): #between LyA and LyB
+                result[inu] = normbelow * (currnu/nucut)**indexbelow
+            elif (currnu >= nucut):  #between LyB and Continuum
+                result[inu] = normabove * (currnu/nucut)**indexabove
+            else:
+                print("Error in SED_LyA, whats the frequency Kenneth?")
+                ###HectorAfonsoCruz: Who the fuck is Kenneth
+                ###HectorAfonsoCruz: Update: OHH IT'S AN R.E.M. SONG
+
+
+        return result/nucut #extra 1/nucut because dnu, normalizes the integral
+        
+###HectorAfonsoCruz: Original SED_LyA
+#    def SED_LyA(self, nu_in):
+#        "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
+#
+#        nucut = constants.freqLyB #above and below this freq different power laws
+#        amps = np.array([0.68,0.32]) #Approx following the stellar spectra of BL05. Normalized to unity
+#
+#        indexbelow = 0.14 #if one of them zero worry about normalization
+#        normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
+#        indexabove = -8.0
+#        normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
+#
+#        nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
+#
+#        result = np.zeros_like(nulist)
+#        for inu, currnu in enumerate(nulist):
+#            if (currnu<constants.freqLyA or currnu>=constants.freqLyCont):
+#                result[inu] = 0.0
+#            elif (currnu < nucut): #between LyA and LyB
+#                result[inu] = normbelow * (currnu/nucut)**indexbelow
+#            elif (currnu >= nucut):  #between LyB and Continuum
+#                result[inu] = normabove * (currnu/nucut)**indexabove
+#            else:
+#                print("Error in SED_LyA, whats the frequency Kenneth?")
+#                ###HectorAfonsoCruz: Who the fuck is Kenneth
+#                ###HectorAfonsoCruz: Update: OHH IT'S AN R.E.M. SONG
+#
+#
+#        return result/nucut #extra 1/nucut because dnu, normalizes the integral

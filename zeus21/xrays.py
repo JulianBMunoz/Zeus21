@@ -9,7 +9,7 @@ UT Austin and Harvard CfA - January 2023
 
 import numpy as np
 from . import constants
-from .cosmology import n_H, HubinvMpc
+from .cosmology import n_baryon, HubinvMpc
 
 
 class Xray_class:
@@ -17,7 +17,7 @@ class Xray_class:
 
     def __init__(self, Cosmo_Parameters):
 
-        self.atomfractions = np.array([1,Cosmo_Parameters.x_He]) #faction of baryons in HI and HeI, assumed to just be the avg cosmic
+        self.atomfractions = np.array([Cosmo_Parameters.f_H,Cosmo_Parameters.f_He]) #faction of baryons in HI and HeI, assumed to just be the avg cosmic
         self.atomEnIon = np.array([constants.EN_ION_HI, constants.EN_ION_HeI]) #threshold energies for each, in eV
         self.TAUMAX=100. #max optical depth, cut to 0 after to avoid overflows
 
@@ -37,8 +37,8 @@ class Xray_class:
         sigmatot = self.atomfractions[0] * sigma_HI(Eninttautab)
         sigmatot += self.atomfractions[1] * sigma_HeI(Eninttautab)
         sigmatot = sigmatot.T #to broadcast below
-
-        integrand = 1.0/HubinvMpc(Cosmo_Parameters, zinttau)/(1+zinttau) * sigmatot * n_H(Cosmo_Parameters, zinttau) * constants.Mpctocm
+        # divided by factor of H(z')(1+z') because of variable of integration change from proper distance to redshift
+        integrand = 1.0/HubinvMpc(Cosmo_Parameters, zinttau)/(1+zinttau) * sigmatot * n_baryon(Cosmo_Parameters, zinttau) * constants.Mpctocm
         taulist = np.trapz(integrand, zinttau, axis=1)
 
         #OLD: kept for reference only.
@@ -81,7 +81,7 @@ class Xray_class:
         sigmatot = self.atomfractions[0] * sigma_HI(En)
         sigmatot += self.atomfractions[1] * sigma_HeI(En)
 
-        return (1.0/(sigmatot * n_H(Cosmo_Parameters,z))/constants.Mpctocm*(1+z) )
+        return (1.0/(sigmatot * n_baryon(Cosmo_Parameters,z))/constants.Mpctocm*(1+z) )
 
 
 

@@ -45,8 +45,7 @@ def test_inputs():
     assert(OmegaToT == pytest.approx(1.0))
 
     #and the fH and fHe fractions
-    assert(CosmoParams.x_He >= 0.)
-    assert(CosmoParams.x_He <= 1.)
+    assert(CosmoParams.f_He + CosmoParams.f_H == pytest.approx(1.0))
 
     #make sure the Rsmoo chosen are reasonable.
     assert(CosmoParams._Rtabsmoo[0] <= 3.0) # the smallest one is small enough
