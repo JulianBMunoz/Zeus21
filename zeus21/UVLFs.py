@@ -9,7 +9,7 @@ UT Austin - June 2023
 
 from . import cosmology
 from . import constants
-from .sfrd import SFR
+from .sfrd import SFR_II
 from .cosmology import bias_Tinker
 
 import numpy as np
@@ -41,7 +41,7 @@ def UVLF_binned(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, zcenter, zwi
 
 
     
-    SFRlist = SFR(Astro_Parameters,Cosmo_Parameters,HMF_interpolator,zcenter)
+    SFRlist = SFR_II(Astro_Parameters,Cosmo_Parameters,HMF_interpolator,zcenter)
     sigmaUV = Astro_Parameters.sigmaUV
   
     if (constants.FLAG_RENORMALIZE_LUV == True): #lower the LUV (or SFR) to recover the true avg, not log-avg

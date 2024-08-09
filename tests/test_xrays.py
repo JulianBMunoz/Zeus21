@@ -5,6 +5,9 @@ Xray tests for Zeus21
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
+
 """
 
 import pytest
@@ -12,7 +15,6 @@ import zeus21
 import numpy as np
 
 from zeus21.xrays import *
-
 
 CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10.) #to speed up
 ClassyCosmo = zeus21.runclass(CosmoParams_input)
