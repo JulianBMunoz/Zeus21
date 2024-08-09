@@ -30,7 +30,7 @@ Muñoz, Mirocha, Furlanetto, and Sabti 2023
     year = "2023"
 }
 
-And if you use relative velocites, Lyman-Werner feedback, or Population III stars please consider citing:
+And if you use relative velocites, Lyman-Werner feedback, or Population III stars please cite:
 
 [The First Billion Years in Seconds: An Effective Model for the 21-cm Signal with Population III Stars](https://arxiv.org/abs/2407.18294).
 Cruz, Muñoz, Sabti, and Kamionkowski 2024

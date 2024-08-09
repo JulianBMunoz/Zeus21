@@ -35,7 +35,7 @@ class Cosmo_Parameters_Input:
         #and whether to emulate 21cmFAST
         self.Flag_emulate_21cmfast = Flag_emulate_21cmfast #whether to emulate 21cmFAST in HMF, LyA, and X-ray opacity calculations
         
-        ###HectorAfonsoCruz: Flag whether to use v_cb
+        ###HAC: Flag whether to use v_cb
         self.USE_RELATIVE_VELOCITIES = USE_RELATIVE_VELOCITIES
 
 
@@ -66,18 +66,27 @@ class Cosmo_Parameters:
         self.OmegaL = ClassCosmo.Omega_Lambda()
         self.OmegaB = ClassCosmo.Omega_b()
         
-        ###HectorAfonsoCruz: added z_rec
+        ###HAC: added z_rec
         self.z_rec = ClassCosmo.get_current_derived_parameters(['z_rec'])['z_rec']
         
-        ###HectorAfonsoCruz: added v_cb flag
+        ###HAC: added v_cb flag
         self.USE_RELATIVE_VELOCITIES = CosmoParams_input.USE_RELATIVE_VELOCITIES
         
+        ###n_H() stuff
         self.Y_He = ClassCosmo.get_current_derived_parameters(['YHe'])['YHe']
-        self.f_He = self.Y_He/4.0/(1.0 - 3.0/4.0 * self.Y_He) #=nHe/nb
+        self.x_He = self.Y_He/4.0/(1.0 - self.Y_He) #=nHe/nH
         self.f_H = (1.0 - self.Y_He)/(1.0 - 3.0/4.0 * self.Y_He) #=nH/nb
-
-        self.mu_baryon = (self.f_H + self.f_He * 4.) * 0.94 #mproton ~ 0.94 GeV
+        self.f_He = self.Y_He/4.0/(1.0 - 3.0/4.0 * self.Y_He) #=nHe/nb
+        
+        self.mu_baryon = (1 + self.x_He * 4.)/(1 + self.x_He) * constants.mH_GeV #mproton ~ 0.94 GeV
         self.mu_baryon_Msun = self.mu_baryon/constants.MsuntoGeV
+        
+#        ###old dependencies of n_baryon() instead of n_H()
+#        self.Y_He = ClassCosmo.get_current_derived_parameters(['YHe'])['YHe']
+#        self.f_He = self.Y_He/4.0/(1.0 - 3.0/4.0 * self.Y_He) #=nHe/nb
+#        self.f_H = (1.0 - self.Y_He)/(1.0 - 3.0/4.0 * self.Y_He) #=nH/nb
+#        self.mu_baryon = (self.f_H + self.f_He * 4.) * 0.94 #mproton ~ 0.94 GeV
+        
 
 
         #for R->M conversions for HMF. Used for CLASS input so assumes tophat.
@@ -112,10 +121,8 @@ class Cosmo_Parameters:
         if(self.Flag_emulate_21cmfast==True):
             self.Rsmmin = 0.62*1.5 #same as minmum R in 21cmFAST for their standard 1.5 Mpc cell resolution. 0.62 is their 'L_FACTOR'
             self.Rsmmax = 500. #same as R_XLy_MAX in 21cmFAST. Too low?
-            self.NRs = np.floor(90*constants.precisionboost).astype(int) ###HAC: this needs to change to 150 to resolve the VAOs, but 45 to match 21cmfast resolution
-        else:
-            self.NRs = np.floor(90*constants.precisionboost).astype(int) ###HAC: this needs to change to 150 to resolve the VAOs, but 45 to match 21cmfast resolution
-
+            
+        self.NRs = np.floor(45*constants.precisionboost).astype(int)
         self._Rtabsmoo = np.logspace(np.log10(self.Rsmmin), np.log10(self.Rsmmax), self.NRs) # Smoothing Radii in Mpc com
         self._dlogRR = np.log(self.Rsmmax/self.Rsmmin)/(self.NRs-1.0)
 
@@ -137,12 +144,6 @@ class Cosmo_Parameters:
             self.delta_crit_ST = 1.68
             self.a_corr_EPS = 1.0
             
-#            ###HAC: DELETE BELOW!!!!! Just to check Visbal+14 LW background
-#            self.a_ST = 0.707 #OG ST fit, or 0.85 to fit 1805.00021
-#            self.p_ST = 0.3
-#            self.Amp_ST = 0.3222
-#            self.delta_crit_ST = 1.686
-#            self.a_corr_EPS = 1.0
         else:
             print("Error! Have to set either Flag_emulate_21cmfast = True or False")
 
@@ -180,7 +181,7 @@ class Astro_Parameters:
 
                     sigmaUV=0.5,
 
-                    USE_POPIII = False, 
+                    USE_POPIII = True,
 
                     alphastar_III = 0, 
                     betastar_III = 0,
@@ -191,11 +192,9 @@ class Astro_Parameters:
                     fesc7_III = 10**(-1.35),
                     alphaesc_III = -0.3,
                     L40_xray_III = 3.0,
-                    E0_xray_III = 500.,
                     alpha_xray_III = -1.0,
-                    Emax_xray_norm_III = 2000,
                     
-                    USE_LW_FEEDBACK = False,
+                    USE_LW_FEEDBACK = True,
                     A_LW = 2.0,
                     beta_LW = 0.6,
                  
@@ -212,7 +211,7 @@ class Astro_Parameters:
         else:
             self.astromodel = astromodel # which SFR model we use. 0=Gallumi-like, 1=21cmfast-like
 
-        ###HectorAfonsoCruz: Added PopIII parameters:
+        ###HAC: Added PopIII parameters:
         self.USE_POPIII = USE_POPIII
         
         self.alphastar_III = alphastar_III
@@ -225,11 +224,9 @@ class Astro_Parameters:
         self.fesc7_III = fesc7_III
         self.alphaesc_III = alphaesc_III
         self.L40_xray_III = L40_xray_III
-        self.E0_xray_III = E0_xray_III
         self.alpha_xray_III = alpha_xray_III
-        self.Emax_xray_norm_III = Emax_xray_norm_III
         
-        ###HectorAfonsoCruz: Using LW feedback and fixing parameters
+        ###HAC: Using LW feedback and fixing parameters
         self.USE_LW_FEEDBACK = USE_LW_FEEDBACK
         
         if self.USE_LW_FEEDBACK == True:
@@ -239,7 +236,7 @@ class Astro_Parameters:
             self.A_LW = 0.0
             self.beta_LW = 0.0
         
-        ###HectorAfonsoCruz: Using Relative Velocities and fixing parameters
+        ###HAC: Using Relative Velocities and fixing parameters
         if Cosmo_Parameters.USE_RELATIVE_VELOCITIES == True:
             self.A_vcb = A_vcb
             self.beta_vcb = beta_vcb
@@ -298,14 +295,26 @@ class Astro_Parameters:
 
         self.N_alpha_perbaryon_II=Nalpha_lyA_II #number of photons between LyA and Ly Cont. per baryon (from LB05)
         self.N_alpha_perbaryon_III=Nalpha_lyA_III #number of photons between LyA and Ly Cont. per baryon (from LB05)
+        
         self.N_ion_perbaryon_II = 5000 #fixed for PopII-type (Salpeter)
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             self.N_ion_perbaryon_III = 44000 #fixed for PopIII-type, from Klessen & Glover 2023 Table A2 (2303.12500)
         elif(Cosmo_Parameters.Flag_emulate_21cmfast==False):
             self.N_ion_perbaryon_III = 52480 #fixed for PopIII-type, from Klessen & Glover 2023 Table A2 (2303.12500)
+            
+        if(Cosmo_Parameters.Flag_emulate_21cmfast==False):
+            self.N_LW_II = 6200.0 #assuming BL05 stellar spectrum, equal to N_alpha_perbaryon_II * fraction of photons that fall in the LW band
+            self.N_LW_III = 12900.0 #assuming Intermediate IMF from 2202.02099, equal to 4.86e-22 / (11.9 * u.eV).to(u.erg).value * 5.8e14
+            
+        elif(Cosmo_Parameters.Flag_emulate_21cmfast==True):
+            popIIIcorrection = 0.7184627927009317/6.5 #scaling used by 21cmfast to get correct number of Pop III LW photons per baryon
+            self.N_LW_III = popIIIcorrection * self.N_alpha_perbaryon_III
+
+            popIIcorrection = 0.6415670418531249/2.5 #scaling used by 21cmfast to get correct number of Pop II LW photons per baryon
+            self.N_LW_II = popIIcorrection * self.N_alpha_perbaryon_II
 
 
-        if(Mturn_fixed == None):
+        if(Mturn_fixed == None): #The FIXED/SHARP routine below only applies to Pop II, not to Pop III
             self.FLAG_MTURN_FIXED = False #whether to fix Mturn or use Matom(z) at each z
         else:
             self.FLAG_MTURN_FIXED = True #whether to fix Mturn or use Matom(z) at each z
@@ -319,28 +328,42 @@ class Astro_Parameters:
 
 
 
-    def SED_XRAY(self, En):
+    def SED_XRAY(self, En, pop = 0): #pop set to zero as default, but it must be set to either 2 or 3
         "SED of our Xray sources, normalized to integrate to 1 from E0_xray to Emax_xray (int dE E * SED(E), and E*SED is the power-law with index alpha_xray, so the output is divided by 1/E at the end to return number). Takes energy En in eV"
-        if np.abs(self.alpha_xray+1.0) < 0.01: #log
+        if pop == 2:
+            alphaX = self.alpha_xray
+        elif pop == 3:
+            alphaX = self.alpha_xray_III
+        else:
+            print("Must set pop to either 2 or 3!")
+            
+        if np.abs(alphaX + 1.0) < 0.01: #log
             norm = 1.0/np.log(self.Emax_xray_norm/self.E0_xray) / self.E0_xray
         else:
-            norm = (1.0 + self.alpha_xray)/((self.Emax_xray_norm/self.E0_xray)**(1 + self.alpha_xray) - 1.0) / self.E0_xray
+            norm = (1.0 + alphaX)/((self.Emax_xray_norm/self.E0_xray)**(1 + alphaX) - 1.0) / self.E0_xray
 
-        return np.power(En/self.E0_xray,self.alpha_xray)/En * norm * np.heaviside(En - self.E0_xray, 0.5)
+        return np.power(En/self.E0_xray, alphaX)/En * norm * np.heaviside(En - self.E0_xray, 0.5)
         #do not cut at higher energies since they redshift into <2 keV band
 
-
-    def SED_LyA_II(self, nu_in):
+    def SED_LyA(self, nu_in, pop = 0): #default pop set to zero so python doesn't complain, but must be 2 or 3 for this to work
         "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
 
         nucut = constants.freqLyB #above and below this freq different power laws
-        amps = np.array([0.68,0.32]) #Approx following the stellar spectra of BL05. Normalized to unity
-
-        indexbelow = 0.14 #if one of them zero worry about normalization
-        normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
-        indexabove = -8.0
-        normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
-
+        if pop == 2:
+            amps = np.array([0.68,0.32]) #Approx following the stellar spectra of BL05. Normalized to unity
+            indexbelow = 0.14 #if one of them zero worry about normalization
+            normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
+            indexabove = -8.0
+            normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
+        elif pop == 3:
+            amps = np.array([0.56,0.44]) #Approx following the stellar spectra of BL05. Normalized to unity
+            indexbelow = 1.29 #if one of them zero worry about normalization
+            normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
+            indexabove = 0.2
+            normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
+        else:
+            print("Must set pop to 2 or 3!")
+            
         nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
 
         result = np.zeros_like(nulist)
@@ -353,42 +376,13 @@ class Astro_Parameters:
                 result[inu] = normabove * (currnu/nucut)**indexabove
             else:
                 print("Error in SED_LyA, whats the frequency Kenneth?")
-                ###HectorAfonsoCruz: Who the fuck is Kenneth
-                ###HectorAfonsoCruz: Update: OHH IT'S AN R.E.M. SONG
 
 
         return result/nucut #extra 1/nucut because dnu, normalizes the integral
         
-    def SED_LyA_III(self, nu_in):
-        "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
 
-        nucut = constants.freqLyB #above and below this freq different power laws
-        amps = np.array([0.56,0.44]) #Approx following the stellar spectra of BL05. Normalized to unity
-
-        indexbelow = 1.29 #if one of them zero worry about normalization
-        normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
-        indexabove = 0.2
-        normabove = (1.0 + indexabove)/((constants.freqLyCont/nucut)**(1 + indexabove) - 1.0) * amps[1]
-
-        nulist = np.asarray([nu_in]) if np.isscalar(nu_in) else np.asarray(nu_in)
-
-        result = np.zeros_like(nulist)
-        for inu, currnu in enumerate(nulist):
-            if (currnu<constants.freqLyA or currnu>=constants.freqLyCont):
-                result[inu] = 0.0
-            elif (currnu < nucut): #between LyA and LyB
-                result[inu] = normbelow * (currnu/nucut)**indexbelow
-            elif (currnu >= nucut):  #between LyB and Continuum
-                result[inu] = normabove * (currnu/nucut)**indexabove
-            else:
-                print("Error in SED_LyA, whats the frequency Kenneth?")
-                ###HectorAfonsoCruz: Who the fuck is Kenneth
-                ###HectorAfonsoCruz: Update: OHH IT'S AN R.E.M. SONG
-
-
-        return result/nucut #extra 1/nucut because dnu, normalizes the integral
         
-###HectorAfonsoCruz: Original SED_LyA
+###HAC: Original SED_LyA
 #    def SED_LyA(self, nu_in):
 #        "SED of our Lyman-alpha-continuum sources, normalized to integrate to 1 (int d nu SED(nu), so SED is number per units energy (as opposed as E*SED, what was for Xrays) "
 #
@@ -412,8 +406,6 @@ class Astro_Parameters:
 #                result[inu] = normabove * (currnu/nucut)**indexabove
 #            else:
 #                print("Error in SED_LyA, whats the frequency Kenneth?")
-#                ###HectorAfonsoCruz: Who the fuck is Kenneth
-#                ###HectorAfonsoCruz: Update: OHH IT'S AN R.E.M. SONG
 #
 #
 #        return result/nucut #extra 1/nucut because dnu, normalizes the integral

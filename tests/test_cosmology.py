@@ -5,6 +5,8 @@ Cosmology tests for Zeus21
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
 """
 
 import pytest
@@ -17,11 +19,14 @@ from zeus21.cosmology import *
 def test_cosmo():
 
 
-    CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10.) #to speed up
+    CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10., USE_RELATIVE_VELOCITIES=True) #to speed up
     ClassyCosmo = zeus21.runclass(CosmoParams_input)
     CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo)
 
-
+    #velocity component testing
+    assert(10.0 <= ClassyCosmo.pars['sigma_vcb'] <= 100.0)
+    assert(10.0 <= ClassyCosmo.pars['v_avg'] <= 100.0)
+    
     #useful functions:
 
     #today
@@ -45,7 +50,7 @@ def test_cosmo():
     assert(np.sqrt(CosmoParams.OmegaR) * H0test * (1+zzRad)**2.0 == pytest.approx(HzRadtest, 0.01))
 
 
-    assert(0. <= n_baryon(CosmoParams,0.0) <= 1e-6) #make sure it's reasonable ~1e-7
+    assert(0. <= n_H(CosmoParams,0.0) <= 1e-6) #make sure it's reasonable ~1e-7
 
     assert(2.5<= Tcmb(ClassyCosmo,0.0) <= 3.0) #make sure it's reasonable 2.725 K
 
@@ -69,3 +74,5 @@ def test_cosmo():
     MM = HMFintclass.fitMztab[0][1]
     zz = HMFintclass.fitMztab[1][1]
     assert(HMFintclass.HMF_int(np.exp(MM),zz) == pytest.approx(HMFintclass.HMFtab[1,1],0.01))
+    
+    

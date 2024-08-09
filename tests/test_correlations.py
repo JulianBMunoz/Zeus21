@@ -5,6 +5,8 @@ Correlations tests for Zeus21
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
 """
 
 import pytest
@@ -26,6 +28,7 @@ CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
 def test_corrfuncs():
 
     assert(CorrFClass.xi_RR_CF[0][0][1] >= CorrFClass.xi_RR_CF[1][1][1]) #make sure smoothing goes the right direction
+    assert(CorrFClass.xiEta_RR_CF[0][0][1] >= CorrFClass.xiEta_RR_CF[1][1][1]) #make sure smoothing goes the right direction
 
     #windows
     ktestwin = 1e-4
@@ -38,9 +41,3 @@ def test_corrfuncs():
     assert(CorrFClass._WinG(ktestwin,Rtestwin) < 1.0)
     assert(CorrFClass._WinTH(ktestwin,Rtestwin) < 1.0)
     assert(CorrFClass._WinTH1D(ktestwin,Rtestwin) < 1.0)
-
-
-
-
-
-#transfers

@@ -47,7 +47,7 @@ class Correlations:
         self.xi_RR_CF = self.get_xi_R1R2_z0(Cosmo_Parameters)
         ClassCosmo.pars['xi_RR_CF'] = np.copy(self.xi_RR_CF) #store correlation function for gamma_III correction in SFRD
 
-        ###HectorAfonsoCruz: Interpolated object for eta power spectrum
+        ###HAC: Interpolated object for eta power spectrum
         if Cosmo_Parameters.USE_RELATIVE_VELOCITIES == True:
             P_eta_interp = interp1d(ClassCosmo.pars['k_eta'], ClassCosmo.pars['P_eta'], bounds_error = False, fill_value = 0)
             self._PkEtaCF = P_eta_interp(self._klistCF)
@@ -93,7 +93,7 @@ class Correlations:
         
         ###HAC: Broadcasted to improve efficiency
         ###HAC: dim 0 is R1, dim 1 is R2, dim 2 is r, where R1 and R2 are smoothing radii and r is the argument of xi(r)
-        lengthRarray = len(Cosmo_Parameters._Rtabsmoo)
+        lengthRarray = Cosmo_Parameters.NRs
         windowR1 = self.Window(self._klistCF.reshape(lengthRarray, 1, 1), Cosmo_Parameters._Rtabsmoo.reshape(1, 1, lengthRarray))
         windowR2 = self.Window(self._klistCF.reshape(1, lengthRarray,1), Cosmo_Parameters._Rtabsmoo.reshape(1, 1, lengthRarray))
         
@@ -103,7 +103,7 @@ class Correlations:
 
         return xi_RR_CF
         
-    ###HectorAfonsoCruz: The next two are the same, but for
+    ###HAC: The next two are the same, but for
     def get_xiEta(self, Cosmo_Parameters, ClassCosmo):
         "Get correlation function of v^2 at z_drag (~1060 for LCDM parameters)"
         ##Warning: definitel check if beyond LCDM!
@@ -141,15 +141,15 @@ class Power_Spectra:
         #set up some variables
         self._rs_input_mcfit = Correlations.rlist_CF #just to make notation simpler
         self.klist_PS = Correlations._klistCF
-        self.RSD_MODE = RSD_MODE
+        self.RSD_MODE = RSD_MODE #redshift-space distortion mode. 0 = None (mu=0), 1 = Spherical avg (like 21-cmFAST), 2 = LoS only (mu=1). 2 is more observationally relevant, whereas 1 the standard assumption in sims. 0 is just for comparison with real-space #TODO: mode to save at different mu
 
         #first get the linear window functions -- note it already has growth factor in it, so it multiplies Pmatter(z=0)
-        self.kwindow, self.windowalpha_II = self.get_xa_window(Cosmo_Parameters, Correlations, T21_coefficients, 2)
-        self._kwindowX, self.windowxray_II = self.get_Tx_window(Cosmo_Parameters, Correlations, T21_coefficients, 2)
+        self.kwindow, self.windowalpha_II = self.get_xa_window(Cosmo_Parameters, Correlations, T21_coefficients, pop = 2)
+        self._kwindowX, self.windowxray_II = self.get_Tx_window(Cosmo_Parameters, Correlations, T21_coefficients, pop = 2)
         
         if Astro_Parameters.USE_POPIII == True:
-            self.kwindow, self.windowalpha_III = self.get_xa_window(Cosmo_Parameters, Correlations, T21_coefficients, 3)
-            self._kwindowX, self.windowxray_III = self.get_Tx_window(Cosmo_Parameters, Correlations, T21_coefficients, 3)
+            self.kwindow, self.windowalpha_III = self.get_xa_window(Cosmo_Parameters, Correlations, T21_coefficients, pop = 3)
+            self._kwindowX, self.windowxray_III = self.get_Tx_window(Cosmo_Parameters, Correlations, T21_coefficients, pop = 3)
         else:
             self.windowalpha_III = np.zeros_like(self.windowalpha_II)
             self.windowxray_III = np.zeros_like(self.windowxray_II)
@@ -200,7 +200,7 @@ class Power_Spectra:
         #and now define power spectra:
         #for xalpha, first linear
         self._Pk_xa_lin_II = self.windowalpha_II**2 * Correlations._PklinCF
-        self._Pk_xa_lin_III = self.windowalpha_III**2 * Correlations._PklinCF ###HACFIX:+ self.windowalphaVel_III**2 * Correlations._PkEtaCF
+        self._Pk_xa_lin_III = self.windowalpha_III**2 * Correlations._PklinCF ###TO DO (linearized VCB flucts):+ self.windowalphaVel_III**2 * Correlations._PkEtaCF
         self._Pk_xa_lin_IIxIII = 2* self.windowalpha_II * self.windowalpha_III * Correlations._PklinCF #Pop IIxIII cross term doesn't have a velocity component
 
         self.Deltasq_xa_lin_II = self._Pk_xa_lin_II * self._k3over2pi2 #note that it still has units of xa_avg
@@ -222,7 +222,7 @@ class Power_Spectra:
 
         #and same for xray
         self._Pk_Tx_lin_II = self.windowxray_II**2 * Correlations._PklinCF
-        self._Pk_Tx_lin_III = self.windowxray_III**2 * Correlations._PklinCF ###HACFIX:+ self.windowxrayVel_III**2 * Correlations._PkEtaCF
+        self._Pk_Tx_lin_III = self.windowxray_III**2 * Correlations._PklinCF ###TO DO (linearized VCB flucts):+ self.windowxrayVel_III**2 * Correlations._PkEtaCF
         self._Pk_Tx_lin_IIxIII = 2* self.windowxray_II * self.windowxray_III * Correlations._PklinCF #Pop IIxIII cross term doesn't have a velocity component
 
         self.Deltasq_Tx_lin_II = self._Pk_Tx_lin_II * self._k3over2pi2
@@ -243,7 +243,7 @@ class Power_Spectra:
 
         #and their cross correlation
         self._Pk_xaTx_lin_II = self.windowalpha_II * self.windowxray_II * Correlations._PklinCF
-        self._Pk_xaTx_lin_III = self.windowalpha_III * self.windowxray_III * Correlations._PklinCF ###HACFIX:+ self.windowalphaVel_III * self.windowxrayVel_III * Correlations._PkEtaCF
+        self._Pk_xaTx_lin_III = self.windowalpha_III * self.windowxray_III * Correlations._PklinCF ###TO DO (linearized VCB flucts):+ self.windowalphaVel_III * self.windowxrayVel_III * Correlations._PkEtaCF
         self._Pk_xaTx_lin_IIxIII = (self.windowalpha_II * self.windowxray_III + self.windowalpha_III * self.windowxray_II) * Correlations._PklinCF
 
         self.Deltasq_xaTx_lin_II = self._Pk_xaTx_lin_II * self._k3over2pi2
@@ -449,7 +449,7 @@ class Power_Spectra:
 
 
 
-    def get_xa_window(self, Cosmo_Parameters, Correlations, T21_coefficients, pop):
+    def get_xa_window(self, Cosmo_Parameters, Correlations, T21_coefficients, pop = 0): #set pop to 2 or 3, default zero just so python doesn't complain
         "Returns the xa window function for all z in zintegral"
         
         zGreaterMatrix100 = np.copy(T21_coefficients.zGreaterMatrix)
@@ -466,6 +466,8 @@ class Power_Spectra:
         elif pop == 3:
             coeffRmatrix = T21_coefficients.coeff2LyAzpRR_III
             gammaRmatrix = T21_coefficients.gamma_III_index2D * growthRmatrix
+        else:
+            print("Must set pop to either 2 or 3!")
 
         _wincoeffsMatrix = coeffRmatrix * gammaRmatrix
 
@@ -489,7 +491,7 @@ class Power_Spectra:
         return _kwinalpha, _win_alpha
 
 
-    def get_Tx_window(self, Cosmo_Parameters,  Correlations, T21_coefficients, pop):
+    def get_Tx_window(self, Cosmo_Parameters,  Correlations, T21_coefficients, pop = 0): #set pop to 2 or 3, default zero just so python doesn't complain
         "Returns the Tx window function for all z in zintegral"
 
         zGreaterMatrix100 = np.copy(T21_coefficients.zGreaterMatrix)
@@ -502,11 +504,12 @@ class Power_Spectra:
             coeffRmatrix = T21_coefficients.coeff2XzpRR_II
             gammaRmatrix = T21_coefficients.gamma_II_index2D * growthRmatrix
             _coeffTx_units = T21_coefficients.coeff_Gammah_Tx_II#z-dependent, includes 10^40 erg/s/SFR normalizaiton and erg/K conversion factor, and the 1/(1+z)^2 factor to compensate the adiabatic cooling of the Tx olny part
-            
         elif pop == 3:
             coeffRmatrix = T21_coefficients.coeff2XzpRR_III
             gammaRmatrix = T21_coefficients.gamma_III_index2D * growthRmatrix
             _coeffTx_units = T21_coefficients.coeff_Gammah_Tx_III
+        else:
+            print("Must set pop to either 2 or 3!")
 
         if(Cosmo_Parameters.Flag_emulate_21cmfast==False): #do the standard 1D TopHat
             _wincoeffs = coeffRmatrix * gammaRmatrix #array in logR space
@@ -534,8 +537,8 @@ class Power_Spectra:
 
 
     def get_all_corrs_II(self, Cosmo_Parameters, Correlations, T21_coefficients):
-        "Returns the correlation function of all observable at each z in zintegral"
-        #HectorAfonsoCruz: I deleted the bubbles and EoR part, to be done later.....
+        "Returns the Pop II components of the correlation functions of all observables at each z in zintegral"
+        #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
     
         zGreaterMatrix100 = np.copy(T21_coefficients.zGreaterMatrix)
@@ -598,7 +601,8 @@ class Power_Spectra:
         corrdNLBIG = corrdNL[:,:, np.newaxis, :,:] #dimensions zp1, R1, zp2, R2, and r which will be looped over below
         for ir in range(len(T21_coefficients.Rtabsmoo)):
             corrdNL = corrdNLBIG[:,:,:,:,ir]
-            ###NUMEXPR Tests
+            
+            #HAC: Computations using ne.evaluate(...) use numexpr, which speeds up computations of massive numpy arrays
             gammaTimesCorrdNL = ne.evaluate('gammamatrixR1R2 * corrdNL')
             expGammaCorrMinusLinear = ne.evaluate('exp(gammaTimesCorrdNL) - 1 - gammaTimesCorrdNL')
 
@@ -638,8 +642,8 @@ class Power_Spectra:
         return 1
 
     def get_all_corrs_IIxIII(self, Cosmo_Parameters, Correlations, T21_coefficients):
-        "Returns the correlation function of all observable at each z in zintegral"
-        #HectorAfonsoCruz: I deleted the bubbles and EoR part, to be done later.....
+        "Returns the Pop IIxIII cross-correlation function of all observables at each z in zintegral"
+        #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
 
         zGreaterMatrix100 = np.copy(T21_coefficients.zGreaterMatrix)
@@ -710,7 +714,8 @@ class Power_Spectra:
 
         for ir in range(len(T21_coefficients.Rtabsmoo)):
             corrdNL = corrdNLBIG[:,:,:,:,ir]
-            ##NUMEXPR Tests
+            
+            #HAC: Computations using ne.evaluate(...) use numexpr, which speeds up computations of massive numpy arrays
 
             gamma_R1II_R2III_CorrdNL = ne.evaluate('gammamatrix_R1II_R2III * corrdNL')
             expGamma_R1II_R2III_CorrdNL = ne.evaluate('exp(gamma_R1II_R2III_CorrdNL) - 1 - gamma_R1II_R2III_CorrdNL')
@@ -749,7 +754,12 @@ class Power_Spectra:
         
         
     def get_xi_Sum_2ExpEta(self, xiEta, etaCoeff1, etaCoeff2):
-    
+        # Computes the correlation function of the VCB portion of the SFRD, expressed using sums of two exponentials
+        # if rho(z1, x1) / rhobar = Ae^-b tilde(eta) + Ce^-d tilde(eta)
+        # and rho(z2, x2) / rhobar = Fe^-g tilde(eta) + He^-k tilde(eta)
+        # then this computes <rho(z1, x1) * rho(z2, x2)> - <rho(z1, x1)> <rho(z2, x2)>
+        # Refer to eq. A12 in 2407.18294 for more details
+        
         aa, bb, cc, dd = etaCoeff1
         ff, gg, hh, kk = etaCoeff2
         
@@ -773,6 +783,9 @@ class Power_Spectra:
 
 
     def get_all_corrs_III(self, Cosmo_Parameters, Correlations, T21_coefficients):
+        "Returns the Pop III components of the correlation functions of all observables at each z in zintegral"
+        #HAC: I deleted the bubbles and EoR part, to be done later.....
+        #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
         zGreaterMatrix100 = np.copy(T21_coefficients.zGreaterMatrix)
         zGreaterMatrix100[np.isnan(zGreaterMatrix100)] = 100
 
@@ -811,9 +824,9 @@ class Power_Spectra:
 
         if Cosmo_Parameters.USE_RELATIVE_VELOCITIES == True:
             etaCorr_xa = self.get_xi_Sum_2ExpEta(corrEtaNL, vcbCoeffsR1, vcbCoeffsR2)
-            totalCorr = ne.evaluate('expGammaCorr * etaCorr_xa + expGammaCorr + etaCorr_xa - gammaCorrdNL') ###HACFIX: - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
+            totalCorr = ne.evaluate('expGammaCorr * etaCorr_xa + expGammaCorr + etaCorr_xa - gammaCorrdNL') ###TO DO (linearized VCB flucts): - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
         else:
-            totalCorr = ne.evaluate('expGammaCorr - gammaCorrdNL') ###HACFIX: - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
+            totalCorr = ne.evaluate('expGammaCorr - gammaCorrdNL') ###TO DO (linearized VCB flucts): - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
 
         self._III_deltaxi_xa = np.einsum('ijkl->il', coeffmatrixxa * totalCorr , optimize = True)  # equivalent to self._III_deltaxi_xa = np.sum(coeffmatrixxa * ((np.exp(gammaTimesCorrdNL)-1.0) - gammaTimesCorrdNL), axis = (1,2))
         self._III_deltaxi_xa *= np.array([coeffzp1xa]).T**2 #brings it to xa units
@@ -859,9 +872,9 @@ class Power_Spectra:
             
             if Cosmo_Parameters.USE_RELATIVE_VELOCITIES == True:
                 etaCorr_Tx = self.get_xi_Sum_2ExpEta(corrEtaNL, vcbCoeffsR1, vcbCoeffsR2)
-                totalCorr = ne.evaluate('expGammaCorrdNL * etaCorr_Tx + expGammaCorrdNL + etaCorr_Tx - gammaCorrdNL') ###HACFIX: - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
+                totalCorr = ne.evaluate('expGammaCorrdNL * etaCorr_Tx + expGammaCorrdNL + etaCorr_Tx - gammaCorrdNL') ###TO DO (linearized VCB flucts): - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
             else:
-                totalCorr = ne.evaluate('expGammaCorrdNL - gammaCorrdNL') ###HACFIX: - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
+                totalCorr = ne.evaluate('expGammaCorrdNL - gammaCorrdNL') ###TO DO (linearized VCB flucts): - etaCorr_xa_lin #note that the Taylor expansion of the cross-term is 0 to linear order
 
             deltaXiTxAddend = ne.evaluate('coeffsTxALL * totalCorr') # equivalent to np.multiply(coeffzp1Tx * coeffzp2Tx * coeffmatrixTxTx, totalCorr, out = outDummy)
             deltaXiTxAddend = np.einsum('ijkl->ik', deltaXiTxAddend, optimize=True) # equivalent to np.sum(deltaXiTxAddend, axis = (1, 3))

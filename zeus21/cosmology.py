@@ -44,7 +44,7 @@ def runclass(CosmologyIn):
     ClassCosmo = Class()
     ClassCosmo.set({'omega_b': CosmologyIn.omegab,'omega_cdm': CosmologyIn.omegac,
                     'h': CosmologyIn.h_fid,'A_s': CosmologyIn.As,'n_s': CosmologyIn.ns,'tau_reio': CosmologyIn.tau_fid})
-    ClassCosmo.set({'output':'mPk,vTk','lensing':'no','P_k_max_1/Mpc':CosmologyIn.kmax_CLASS, 'z_max_pk': CosmologyIn.zmax_CLASS})
+    ClassCosmo.set({'output':'mPk','lensing':'no','P_k_max_1/Mpc':CosmologyIn.kmax_CLASS, 'z_max_pk': CosmologyIn.zmax_CLASS}) ###HAC: add vTK to outputs
     ClassCosmo.set({'gauge':'synchronous'})
     #hfid = ClassCosmo.h() # get reduced Hubble for conversions to 1/Mpc
 
@@ -53,53 +53,54 @@ def runclass(CosmologyIn):
     
     ClassCosmo.pars['Flag_emulate_21cmfast'] = CosmologyIn.Flag_emulate_21cmfast
     
-    ###HectorAfonsoCruz: Adding VCB feedback via a second run of CLASS:
+    ###HAC: Adding VCB feedback via a second run of CLASS:
     if CosmologyIn.USE_RELATIVE_VELOCITIES == True:
         
-        ###HectorAfonsoCruz: getting z_rec from first CLASS run
+        kMAX_VCB = 50.0
+        ###HAC: getting z_rec from first CLASS run
         z_rec = ClassCosmo.get_current_derived_parameters(['z_rec'])['z_rec']
         z_drag = ClassCosmo.get_current_derived_parameters(['z_d'])['z_d']
 
-        ###HectorAfonsoCruz: Running CLASS a second time just to get velocity transfer functions at recombination
+        ###HAC: Running CLASS a second time just to get velocity transfer functions at recombination
         ClassCosmoVCB = Class()
         ClassCosmoVCB.set({'omega_b': CosmologyIn.omegab,'omega_cdm': CosmologyIn.omegac,
                         'h': CosmologyIn.h_fid,'A_s': CosmologyIn.As,'n_s': CosmologyIn.ns,'tau_reio': CosmologyIn.tau_fid})
         ClassCosmoVCB.set({'output':'vTk'})
-        ClassCosmoVCB.set({'P_k_max_1/Mpc':CosmologyIn.kmax_CLASS, 'z_max_pk':12000})
+        ClassCosmoVCB.set({'P_k_max_1/Mpc':kMAX_VCB, 'z_max_pk':12000})
         ClassCosmoVCB.set({'gauge':'newtonian'})
         ClassCosmoVCB.compute()
-
         velTransFunc = ClassCosmoVCB.get_transfer(z_drag)
+
         kVel = velTransFunc['k (h/Mpc)'] * CosmologyIn.h_fid
         theta_b = velTransFunc['t_b']
         theta_c = velTransFunc['t_cdm']
 
-        sigma_vcb = np.sqrt(np.trapz(CosmologyIn.As * (kVel/0.05)**(CosmologyIn.ns-1) /kVel * (theta_b - theta_c)**2/kVel**2, kVel)) * 299792.458 #c in km/s
+        sigma_vcb = np.sqrt(np.trapz(CosmologyIn.As * (kVel/0.05)**(CosmologyIn.ns-1) /kVel * (theta_b - theta_c)**2/kVel**2, kVel)) * constants.c_kms
         ClassCosmo.pars['sigma_vcb'] = sigma_vcb
         
-        ###HectorAfonsoCruz: now computing average velocity assuming a Maxwell-Boltzmann distribution of velocities
-        velArr = np.geomspace(0.01, 299792.458, 10000) #in km/s
+        ###HAC: now computing average velocity assuming a Maxwell-Boltzmann distribution of velocities
+        velArr = np.geomspace(0.01, constants.c_kms, 1000) #in km/s
         vavgIntegrand = (3 / (2 * np.pi * sigma_vcb**2))**(3/2) * 4 * np.pi * velArr**2 * np.exp(-3 * velArr**2 / (2 * sigma_vcb**2))
         ClassCosmo.pars['v_avg'] = np.trapz(vavgIntegrand * velArr, velArr)
         
-        ###HectorAfonsoCruz: Computing Vcb Power Spectrum
+        ###HAC: Computing Vcb Power Spectrum
         ClassCosmo.pars['k_vcb'] = kVel
         ClassCosmo.pars['theta_b'] = theta_b
         ClassCosmo.pars['theta_c'] = theta_c
         P_vcb = CosmologyIn.As * (kVel/0.05)**(CosmologyIn.ns-1) * (theta_b - theta_c)**2/kVel**2 * 2 * np.pi**2 / kVel**3
         
-        p_vcb_intp = interp1d(kVel, P_vcb)
+        p_vcb_intp = interp1d(np.log(kVel), P_vcb)
         ClassCosmo.pars['P_vcb'] = P_vcb
         
-        ###HectorAfonsoCruz: Computing Vcb^2 (eta) Power Spectra
-        kVelIntp = np.logspace(-4, 2, 512)
+        ###HAC: Computing Vcb^2 (eta) Power Spectra
+        kVelIntp = np.geomspace(1e-4, kMAX_VCB, 512)
         rVelIntp = 2 * np.pi / kVelIntp
         
         j0bessel = lambda x: np.sin(x)/x
         j2bessel = lambda x: (3 / x**2 - 1) * np.sin(x)/x - 3*np.cos(x)/x**2
         
-        psi0 = 1 / 3 / (sigma_vcb/299792.458)**2 * np.trapz(kVelIntp**2 / 2 / np.pi**2 * p_vcb_intp(kVelIntp) * j0bessel(kVelIntp * np.transpose([rVelIntp])), kVelIntp, axis = 1)
-        psi2 = -2 / 3 / (sigma_vcb/299792.458)**2 * np.trapz(kVelIntp**2 / 2 / np.pi**2 * p_vcb_intp(kVelIntp) * j2bessel(kVelIntp * np.transpose([rVelIntp])), kVelIntp, axis = 1)
+        psi0 = 1 / 3 / (sigma_vcb/constants.c_kms)**2 * np.trapz(kVelIntp**2 / 2 / np.pi**2 * p_vcb_intp(np.log(kVelIntp)) * j0bessel(kVelIntp * np.transpose([rVelIntp])), kVelIntp, axis = 1)
+        psi2 = -2 / 3 / (sigma_vcb/constants.c_kms)**2 * np.trapz(kVelIntp**2 / 2 / np.pi**2 * p_vcb_intp(np.log(kVelIntp)) * j2bessel(kVelIntp * np.transpose([rVelIntp])), kVelIntp, axis = 1)
         
         k_eta, P_eta = mcfit.xi2P(rVelIntp, l=0, lowring = True)((6 * psi0**2 + 3 * psi2**2), extrap = False)
         
@@ -129,10 +130,14 @@ def Hubinvyr(Cosmo_Parameters,z):
 def rho_baryon(Cosmo_Parameters,z):
 #\rho_baryon in Msun/Mpc^3 as a function of z
     return Cosmo_Parameters.OmegaB * Cosmo_Parameters.rhocrit * pow(1+z,3.0)
+    
+def n_H(Cosmo_Parameters, z):
+#density of hydrogen nuclei (neutral or ionized) in 1/cm^3
+    return rho_baryon(Cosmo_Parameters, z) *( 1- Cosmo_Parameters.Y_He)/(constants.mH_GeV/constants.MsuntoGeV) / (constants.Mpctocm**3.0) 
 
-def n_baryon(Cosmo_Parameters, z):
-#density of baryons in 1/cm^3
-    return rho_baryon(Cosmo_Parameters, z) / Cosmo_Parameters.mu_baryon_Msun / (constants.Mpctocm**3.0)
+#def n_baryon(Cosmo_Parameters, z):
+##density of baryons in 1/cm^3
+#    return rho_baryon(Cosmo_Parameters, z) / Cosmo_Parameters.mu_baryon_Msun / (constants.Mpctocm**3.0)
 
 
 

@@ -43,7 +43,7 @@ class get_T21_coefficients:
         #define the integration redshifts, goes as log(z) (1+ doesn't change sampling much)
         self.zmax_integral = constants.ZMAX_INTEGRAL
         self.zmin = zmin
-        self._dlogzint_target = 0.02/constants.precisionboost #originally 0.02 / constants.precisionboost
+        self._dlogzint_target = 0.02/constants.precisionboost
         self.Nzintegral = np.ceil(1.0 + np.log(self.zmax_integral/self.zmin)/self._dlogzint_target).astype(int)
         self.dlogzint = np.log(self.zmax_integral/self.zmin)/(self.Nzintegral-1.0) #exact value rather than input target above
         self.zintegral = np.logspace(np.log10(self.zmin), np.log10(self.zmax_integral), self.Nzintegral) #note these are also the z at which we "observe", to share computational load
@@ -72,7 +72,7 @@ class get_T21_coefficients:
         zGreaterMatrix_nonan = np.nan_to_num(self.zGreaterMatrix, nan = 100)
 #        self.ztabRsmoo = np.zeros_like(self.SFRDbar2D) #z's that correspond to each Radius R around each zp #HAC: No longer needed
 
-        ###HectorAfonsoCruz: added SFRD & J21LW variables for pop II and III stars TO BE DELETED (not needed)
+        ###HAC: added SFRD & J21LW variables for pop II and III stars TO BE DELETED (not needed)
         self.SFRD_avg = np.zeros_like(self.zintegral)
         self.SFRD_II_avg = np.zeros_like(self.zintegral)
         self.SFRD_III_avg = np.zeros_like(self.zintegral)
@@ -90,7 +90,7 @@ class get_T21_coefficients:
 
 
         
-#        ###HectorAfonsoCruz: OLD, TO BE DELETED, added SFRD variables for pop II and III stars
+#        ###HAC: OLD, TO BE DELETED, added SFRD variables for pop II and III stars
 #        self.gamma_index2D_old = np.zeros_like(self.SFRDbar2D) #index of SFR ~ exp(\gamma delta)
 
         #EoR coeffs
@@ -164,7 +164,7 @@ class get_T21_coefficients:
             self.SFRDbar2D_II = SFRD_II_interp(np.nan_to_num(self.zGreaterMatrix, nan = 100))
             self.SFRDbar2D_III = SFRD_III_cnvg_interp(np.nan_to_num(self.zGreaterMatrix, nan = 100))
             
-        elif(Cosmo_Parameters.Flag_emulate_21cmfast==True): ###HACFIX_ACAUSAL: This accounts for the acausal Mmol effect in 21cmfast
+        elif(Cosmo_Parameters.Flag_emulate_21cmfast==True): ###HAC ACAUSAL: This accounts for the acausal Mmol effect in 21cmfast
             zpTable, tempTable, mTable = np.meshgrid(self.zintegral, self.Rtabsmoo, HMF_interpolator.Mhtab, indexing = 'ij', sparse = True)
             zppTable = self.zGreaterMatrix.reshape((len(self.zintegral), len(self.Rtabsmoo), 1))
 
@@ -200,7 +200,7 @@ class get_T21_coefficients:
         nu0 = Cosmo_Parameters.delta_crit_ST / sigmaM
         nu0[indexTooBig] = 1.0
 
-        dsigmadMcurr = HMF_interpolator.dsigmadMintlog((np.log(mArray),zGreaterArray)) ###HectorAfonsoCruz: Check this works when emulating 21cmFAST
+        dsigmadMcurr = HMF_interpolator.dsigmadMintlog((np.log(mArray),zGreaterArray)) ###HAC: Check this works when emulating 21cmFAST
         dlogSdMcurr = (dsigmadMcurr*sigmaM*2.0)/(modSigmaSq)
 
         deltaArray = deltaNormArray * sigmaR
@@ -286,7 +286,7 @@ class get_T21_coefficients:
                 nu0 = Cosmo_Parameters.delta_crit_ST / sigmaM
                 nu0[indexTooBig] = 1.0
 
-                dsigmadMcurr = HMF_interpolator.dsigmadMintlog((np.log(mArray),zGreaterArray)) ###HectorAfonsoCruz: Check this works when emulating 21cmFAST
+                dsigmadMcurr = HMF_interpolator.dsigmadMintlog((np.log(mArray),zGreaterArray)) ###HAC: Check this works when emulating 21cmFAST
                 dlogSdMcurr = (dsigmadMcurr*sigmaM*2.0)/(modSigmaSq)
 
                 deltaZero = np.zeros_like(sigmaR)
@@ -318,6 +318,11 @@ class get_T21_coefficients:
 
                 #temporarily turning off divide warnings; will turn them on again after exponential fitting routine
                 divideErr = np.seterr(divide = 'ignore')
+                divideErr2 = np.seterr(invalid = 'ignore')
+                
+                ###HAC: The next few lines fits for rho(z, v) / rhoavg = Ae^-b tilde(eta) + Ce^-d tilde(eta).
+                ### To expedite the computation, instead of using scipy.optimize.curve_fit, I choose two points where one
+                ### exponential dominates to fit for C and d, subtract Ce^-d tilde(eta) from rho(z, v) / rhoavg, then fit for A and b
                 
                 dParams = -1 * np.log(SFRDIII_Ratio[:,:,-1]/SFRDIII_Ratio[:,:,-2]) / (etaTilde_array[-1]-etaTilde_array[-2])
                 cParams = np.exp(np.log(SFRDIII_Ratio[:,:,-1]) + dParams *  etaTilde_array[-1])
@@ -327,6 +332,8 @@ class get_T21_coefficients:
                 aParams = np.exp(np.log(SFRDIII_RatioNew[:,:,0]) + bParams *  etaTilde_array[0])
                 
                 divideErr = np.seterr(divide = 'warn')
+                divideErr2 = np.seterr(invalid = 'warn')
+                
                 self.vcb_expFitParams[:,:,0] = aParams
                 self.vcb_expFitParams[:,:,1] = bParams
                 self.vcb_expFitParams[:,:,2] = cParams
@@ -371,7 +378,7 @@ class get_T21_coefficients:
         self.coeff1LyAzp = (1+self.zintegral)**2/(4*np.pi)
 
         nuLYA = np.geomspace(constants.freqLyA, constants.freqLyCont, 128)
-        sedLYAII_interp = interpolate.interp1d(nuLYA, Astro_Parameters.SED_LyA_II(nuLYA), kind = 'linear', bounds_error = False, fill_value = 0) #interpolate LyA SED
+        sedLYAII_interp = interpolate.interp1d(nuLYA, Astro_Parameters.SED_LyA(nuLYA, pop = 2), kind = 'linear', bounds_error = False, fill_value = 0) #interpolate LyA SED
 
         n_recArray = np.arange(0,constants.n_max_recycle-1 )
         zpCube, rCube, n_recCube = np.meshgrid(self.zintegral, self.Rtabsmoo, n_recArray, indexing='ij', sparse=True) #for broadcasting purposes
@@ -395,7 +402,7 @@ class get_T21_coefficients:
         self.coeff2LyAzpRR_II = self.Rtabsmoo * self.dlogRR * self.SFRDbar2D_II * LyAintegral_II/ constants.yrTos/constants.Mpctocm**2
 
         if Astro_Parameters.USE_POPIII == True:
-            sedLYAIII_interp = interpolate.interp1d(nuLYA, Astro_Parameters.SED_LyA_III(nuLYA), kind = 'linear', bounds_error = False, fill_value = 0)
+            sedLYAIII_interp = interpolate.interp1d(nuLYA, Astro_Parameters.SED_LyA(nuLYA, pop = 3), kind = 'linear', bounds_error = False, fill_value = 0)
             eps_alphaRR_III_Cube = Astro_Parameters.N_alpha_perbaryon_III/Cosmo_Parameters.mu_baryon_Msun  * sedLYAIII_interp(nu_lineRRCube)
             Jalpha_III = np.array(constants.fractions_recycle)[:len(n_recArray)].reshape(1,1,len(n_recArray)) * weights_recCube * eps_alphaRR_III_Cube
             LyAintegral_III = np.sum(Jalpha_III,axis=2)
@@ -414,7 +421,8 @@ class get_T21_coefficients:
 
         zpCube, rCube, eCube, zPPCube = np.meshgrid(self.zintegral, self.Rtabsmoo, _Energylist, np.arange(Nzinttau), indexing='ij', sparse=True)
         currentEnergyTable = eCube * (1+zGreaterCube) / (1+zpCube)
-        SEDCube = Astro_Parameters.SED_XRAY(currentEnergyTable)
+        SEDCube = Astro_Parameters.SED_XRAY(currentEnergyTable, pop = 2)
+        SEDCube_III = Astro_Parameters.SED_XRAY(currentEnergyTable, pop = 3)
 
         ######## Broadcasted routine to find X-ray optical depths, modeled after but does not use xrays.optical_depth
         zPPCube = np.array([np.linspace(np.transpose([self.zintegral]), self.zGreaterMatrix, Nzinttau, axis = 2)])
@@ -424,32 +432,40 @@ class get_T21_coefficients:
         sigmatot = Xrays.atomfractions[0] * sigma_HI(ePPCube)
         sigmatot += Xrays.atomfractions[1] * sigma_HeI(ePPCube)
 
-        opticalDepthIntegrand = 1 / cosmology.HubinvMpc(Cosmo_Parameters, zPPCube) / (1+zPPCube) * sigmatot * cosmology.n_baryon(Cosmo_Parameters, zPPCube) * constants.Mpctocm
+        opticalDepthIntegrand = 1 / cosmology.HubinvMpc(Cosmo_Parameters, zPPCube) / (1+zPPCube) * sigmatot * cosmology.n_H(Cosmo_Parameters, zPPCube) * constants.Mpctocm #this uses atom fractions of 1 for HI and x_He for HeI
+#        opticalDepthIntegrand = 1 / cosmology.HubinvMpc(Cosmo_Parameters, zPPCube) / (1+zPPCube) * sigmatot * cosmology.n_baryon(Cosmo_Parameters, zPPCube) * constants.Mpctocm
         tauCube = np.trapz(opticalDepthIntegrand, zPPCube, axis = 3)
 
         indextautoolarge = np.array(tauCube>=Xrays.TAUMAX)
         tauCube[indextautoolarge] = Xrays.TAUMAX
 
-        if Cosmo_Parameters.Flag_emulate_21cmfast == 0:
+        if Cosmo_Parameters.Flag_emulate_21cmfast == False:
             weights_X_zCube = np.exp(-tauCube)
-        elif Cosmo_Parameters.Flag_emulate_21cmfast == 1:
+        elif Cosmo_Parameters.Flag_emulate_21cmfast == True:
             weights_X_zCube = np.heaviside(1.0 - tauCube, 0.5)
         else:
             print("Error, choose a correct XRAY_OPACITY_MODEL")
             
         SEDCube = SEDCube[:,:,:,0] #rescale dimensions of energy and SED cubes back to 3D, so we can integrate over energy
+        SEDCube_III = SEDCube_III[:,:,:,0] #rescale dimensions of energy and SED cubes back to 3D, so we can integrate over energy
+        
         eCube = eCube[:,:,:,0]
         ######## end of optical depth routine
 
         JX_coeffsCube = SEDCube * weights_X_zCube
+        JX_coeffsCube_III = SEDCube_III * weights_X_zCube
 
         sigma_times_en = Xrays.atomfractions[0] * sigma_HI(eCube) * (eCube - Xrays.atomEnIon[0])
         sigma_times_en += Xrays.atomfractions[1] * sigma_HeI(eCube) * (eCube - Xrays.atomEnIon[1])
-
+        sigma_times_en /= np.sum(Xrays.atomfractions)#to normalize per baryon, instead of per Hydrogen nucleus
+                #HI and HeII separate. Notice Energy (and not Energy'), since they get absorbed at the zp frame
+        
         xrayEnergyTable = np.sum(JX_coeffsCube * sigma_times_en * eCube * Astro_Parameters.dlogEnergy,axis=2)
         self.coeff2XzpRR_II = np.nan_to_num(self.Rtabsmoo * self.dlogRR * self.SFRDbar2D_II * xrayEnergyTable * (1.0/constants.Mpctocm**2.0) * constants.normLX_CONST, nan = 0)
+        
         if Astro_Parameters.USE_POPIII == True:
-            self.coeff2XzpRR_III = np.nan_to_num(self.Rtabsmoo * self.dlogRR * self.SFRDbar2D_III * xrayEnergyTable * (1.0/constants.Mpctocm**2.0) * constants.normLX_CONST, nan = 0)
+            xrayEnergyTable_III = np.sum(JX_coeffsCube_III * sigma_times_en * eCube * Astro_Parameters.dlogEnergy,axis=2)
+            self.coeff2XzpRR_III = np.nan_to_num(self.Rtabsmoo * self.dlogRR * self.SFRDbar2D_III * xrayEnergyTable_III * (1.0/constants.Mpctocm**2.0) * constants.normLX_CONST, nan = 0)
         else:
             self.coeff2XzpRR_III = np.zeros_like(self.coeff2XzpRR_II)
 
@@ -482,7 +498,7 @@ class get_T21_coefficients:
         self._GammaXray_III = self.coeff1Xzp * np.sum( self.coeff2XzpRR_III ,axis=1) #notice units are modified (eg 1/H) so it's simplest to sum
         
         fion = 0.4 * np.exp(-cosmology.xefid(Cosmo_Parameters, self.zintegral)/0.2)#partial ionization from Xrays. Fit to Furlanetto&Stoever
-        atomEnIonavg = Xrays.atomfractions[0] *  Xrays.atomEnIon[0] + Xrays.atomfractions[1] *  Xrays.atomEnIon[1]
+        atomEnIonavg = (Xrays.atomfractions[0] *  Xrays.atomEnIon[0] + Xrays.atomfractions[1] *  Xrays.atomEnIon[1]) / (Xrays.atomfractions[0] + Xrays.atomfractions[1] ) #to turn this ratio into one over n_b instead of n_H
         
         self.coeff_Gammah_Tx_II = -Astro_Parameters.L40_xray * constants.ergToK * (1.0+self.zintegral)**2
         self.coeff_Gammah_Tx_III = -Astro_Parameters.L40_xray_III * constants.ergToK * (1.0+self.zintegral)**2 #convert from one to the other, last factors accounts for adiabatic cooling. compensated by the inverse at zp in coeff1Xzp. Minus because integral goes from low to high z, but we'll be summing from high to low everywhere.
@@ -515,7 +531,8 @@ class get_T21_coefficients:
         self.Jalpha_avg = self.coeff1LyAzp*np.sum(self.coeff2LyAzpRR_II + self.coeff2LyAzpRR_III,axis=1) #units of 1/(cm^2 s Hz sr)
         self.T_CMB = cosmology.Tcmb(ClassCosmo, self.zintegral)
 
-        _tau_GP = 3./2.*Cosmo_Parameters.f_H * cosmology.n_baryon(Cosmo_Parameters,self.zintegral)*constants.Mpctocm/cosmology.HubinvMpc(Cosmo_Parameters,self.zintegral) * (constants.wavelengthLyA/1e7)**3 * constants.widthLyAcm * (1.0 - self.xe_avg)  #~3e5 at z=6
+        _tau_GP = 3./2. * cosmology.n_H(Cosmo_Parameters,self.zintegral) * constants.Mpctocm / cosmology.HubinvMpc(Cosmo_Parameters,self.zintegral) * (constants.wavelengthLyA/1e7)**3 * constants.widthLyAcm * (1.0 - self.xe_avg)  #~3e5 at z=6
+#        _tau_GP = 3./2.*Cosmo_Parameters.f_H * cosmology.n_baryon(Cosmo_Parameters,self.zintegral)*constants.Mpctocm/cosmology.HubinvMpc(Cosmo_Parameters,self.zintegral) * (constants.wavelengthLyA/1e7)**3 * constants.widthLyAcm * (1.0 - self.xe_avg)  #~3e5 at z=6
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             _tau_GP/=Cosmo_Parameters.f_H #for some reason they multiuply by N0 (all baryons) and not NH0.
 
@@ -559,13 +576,13 @@ class get_T21_coefficients:
         
         #####################################################################################################
         ### STEP 9: Reionization
-        
-        _trec0 = 1.0/(constants.alphaB * cosmology.n_baryon(Cosmo_Parameters,0) * Astro_Parameters._clumping)#t_recombination  at z=0, in sec
+        _trec0 = 1.0/(constants.alphaB * cosmology.n_H(Cosmo_Parameters,0) *(1 + Cosmo_Parameters.x_He) * Astro_Parameters._clumping)#t_recombination  at z=0, in sec
+#        _trec0 = 1.0/(constants.alphaB * cosmology.n_baryon(Cosmo_Parameters,0) * Astro_Parameters._clumping)#t_recombination  at z=0, in sec
         _recexp = 1.0/(_trec0 * np.sqrt(Cosmo_Parameters.OmegaM) * cosmology.Hubinvyr(Cosmo_Parameters,0) / constants.yrTos)# = 1/(_trec0 * H0 * sqrt(OmegaM) ), dimless. Assumes matter domination and constant clumping. Can be modified to power-law clumping changing the powerlaw below from 3/2
 
         self.coeffQzp = self.dlogzint*self.zintegral/cosmology.Hubinvyr(Cosmo_Parameters,self.zintegral)/(1+self.zintegral) #Deltaz * dt/dz. Units of 1/yr, inverse of niondot
 
-        ###HectorAfonsoCruz: Added N_ion rate contribution from Pop II and III stars. Note that I am using rho_b(z=0) because it's a comoving volume
+        ###HAC: Added N_ion rate contribution from Pop II and III stars. Note that I am using rho_b(z=0) because it's a comoving volume
         zArray, mArray = np.meshgrid(self.zintegral, HMF_interpolator.Mhtab, indexing = 'ij', sparse = True)
 
         integrand_II_table = SFRD_II_integrand(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, mArray, zArray, zArray)
@@ -617,13 +634,16 @@ def tau_reio(Cosmo_Parameters, T21_coefficients):
     #we separate into a low- and hi-z parts (z< or > zmini)
 
     _zlistlowz = np.linspace(0,T21_coefficients.zmin,100)
-    _nelistlowz = cosmology.n_baryon(Cosmo_Parameters,_zlistlowz)*(Cosmo_Parameters.f_H + Cosmo_Parameters.f_He + Cosmo_Parameters.f_He * np.heaviside(constants.zHeIIreio - _zlistlowz,0.5))
+    
+    _nelistlowz = cosmology.n_H(Cosmo_Parameters,_zlistlowz)*(1.0 + Cosmo_Parameters.x_He + Cosmo_Parameters.x_He * np.heaviside(constants.zHeIIreio - _zlistlowz,0.5))
+#    _nelistlowz = cosmology.n_baryon(Cosmo_Parameters,_zlistlowz)*(Cosmo_Parameters.f_H + Cosmo_Parameters.f_He + Cosmo_Parameters.f_He * np.heaviside(constants.zHeIIreio - _zlistlowz,0.5))
     _distlistlowz = 1.0/cosmology.HubinvMpc(Cosmo_Parameters,_zlistlowz)/(1+_zlistlowz)
     _lowzint = constants.sigmaT * np.trapz(_nelistlowz*_distlistlowz,_zlistlowz) * constants.Mpctocm
 
     _zlisthiz = T21_coefficients.zintegral
-
-    _nelistlhiz = cosmology.n_baryon(Cosmo_Parameters,_zlisthiz) * (1.0 - T21_coefficients.xHI_avg)
+    
+    _nelistlhiz = cosmology.n_H(Cosmo_Parameters,_zlisthiz) * (1 + Cosmo_Parameters.x_He) * (1.0 - T21_coefficients.xHI_avg)
+#    _nelistlhiz = cosmology.n_baryon(Cosmo_Parameters,_zlisthiz) * (1.0 - T21_coefficients.xHI_avg)
     _distlisthiz = 1.0/cosmology.HubinvMpc(Cosmo_Parameters,_zlisthiz)/(1+_zlisthiz)
 
     _hizint = constants.sigmaT * np.trapz(_nelistlhiz*_distlisthiz,_zlisthiz) * constants.Mpctocm
@@ -634,7 +654,7 @@ def Matom(z):
     "Returns Matom as a function of z"
     return 3.3e7 * pow((1.+z)/(21.),-3./2)
 
-###HectorAfonsoCruz: Added Mmol split by contributions with no, vcb, and LW feecback
+###HAC: Added Mmol split by contributions with no, vcb, and LW feecback
 def Mmol_0(z):
     "Returns Mmol as a function of z WITHOUT LW or VCB feedback"
     return 3.3e7 * (1.+z)**(-1.5)
@@ -670,7 +690,7 @@ def fstarofz(Astro_Parameters, Cosmo_Parameters, z, Mhlist):
         return Cosmo_Parameters.OmegaB/Cosmo_Parameters.OmegaM * epsstar_ofz /(pow(Mhlist/Astro_Parameters.Mc,- Astro_Parameters.alphastar))
 
     
-###HectorAfonsoCruz: Added fstar for PopIII
+###HAC: Added fstar for PopIII
 def fstarofz_III(Astro_Parameters, Cosmo_Parameters, z, Mhlist):
     epsstar_ofz_III = Astro_Parameters.fstar_III * 10**(Astro_Parameters.dlog10epsstardz_III * (z-Astro_Parameters._zpivot_III) )
     if Cosmo_Parameters.Flag_emulate_21cmfast == False:
@@ -685,27 +705,22 @@ def J_LW(Astro_Parameters, Cosmo_Parameters, sfrdIter, z, pop):
     #for units to work, c must be in Mpc/s and proton mass in solar masses
     #and convert from 1/Mpc^2 to 1/cm^2
     
-    Elw = (11.9 * u.eV).to(u.erg).value
-    deltaNulw = 5.8e14 #Hz
-    speedLight = const.c.to(u.Mpc/u.s).value
-    massProton = const.m_p.to(u.M_sun).value
+    Elw = (constants.Elw_eV * u.eV).to(u.erg).value
+    deltaNulw = constants.deltaNulw #Hz
+    speedLight = constants.c_Mpcs
+    massProton = constants.mprotoninMsun
+    redshiftFactor = 1.04 #max amount LW photons can redshift before being scattered, as in Visbal+1402.0882
     
-    if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
-        if pop == 3:
-            Nlw = 0.7184627927009317/6.5 * Astro_Parameters.N_alpha_perbaryon_III # ratio of 0.718 found by integrating Pop III Lyman alpha SED between LW and Lyman limits, = 12900 assuming Intermediate IMF from 2202.02099, equal to 4.86e-22 / (11.9 * u.eV).to(u.erg).value * 5.8e14
-        elif pop == 2:
-            Nlw = 0.6415670418531249/2.5 * Astro_Parameters.N_alpha_perbaryon_II # ratio of 0.64 found by integrating Pop II Lyman alpha SED between LW and Lyman limits, approximately 6200 for N_alpha_perbaryon_II = 9690
-    elif(Cosmo_Parameters.Flag_emulate_21cmfast==False):
-        if pop == 3:
-            Nlw = 12900.0 #assuming Intermediate IMF from 2202.02099, equal to 4.86e-22 / (11.9 * u.eV).to(u.erg).value * 5.8e14
-        elif pop == 2:
-            Nlw = 6200.0
+    if pop == 3:
+        Nlw = Astro_Parameters.N_LW_III
+    elif pop == 2:
+        Nlw = Astro_Parameters.N_LW_II
 
-    zIntMatrix = np.linspace(z, 1.04*(1+z)-1, 20)
+    zIntMatrix = np.linspace(z, redshiftFactor*(1+z)-1, 20)
     
     sfrdIterMatrix_LW = interpolate.interp1d(z, sfrdIter, kind = 'linear', bounds_error=False, fill_value=0)(zIntMatrix)
     
-    if(Cosmo_Parameters.Flag_emulate_21cmfast==True):##HACFIX_ACAUSAL: COMMENT THIS IF STATEMENT BACK IN!!!
+    if(Cosmo_Parameters.Flag_emulate_21cmfast==True):##HAC ACAUSAL: This if statement allows for acausal Mmol
         sfrdIterMatrix_LW = sfrdIter * np.ones_like(zIntMatrix) #HAC: This fixes J_LW(z) = int SFRD(z) dz' such that no z' dependence in the integral (for some reason 21cmFAST does this). Delete when comparing J_LW() with Visbal+14 and Mebane+17
         
     integrandLW = speedLight / 4 / np.pi
@@ -737,6 +752,7 @@ def SFR_II(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, massVector, z, 
     "SFR in Msun/yr at redshift z. Evaluated at the halo masses Mh [Msun] of the HMF_interpolator, given Astro_Parameters"
     Mh = massVector
     
+    #The FIXED/SHARP routine below only applies to Pop II, not to Pop III
     if Astro_Parameters.USE_POPIII == False:
         if(Astro_Parameters.FLAG_MTURN_FIXED == False):
             fduty = np.exp(-Matom(z)/Mh)
@@ -778,11 +794,11 @@ def dMh_dt(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, massVector, z):
     # units of M_sun/yr
     Mh = massVector
     
-    if(Astro_Parameters.astromodel == 0): #GALLUMI-like
-        if(Astro_Parameters.accretion_model == 0): #exponential accretion
+    if(Astro_Parameters.astromodel == False): #GALLUMI-like
+        if(Astro_Parameters.accretion_model == False): #exponential accretion
             dMhdz = massVector * constants.ALPHA_accretion_exponential
             
-        elif(Astro_Parameters.accretion_model == 1): #EPS accretion
+        elif(Astro_Parameters.accretion_model == True): #EPS accretion
             
             Mh2 = Mh * constants.EPSQ_accretion
             indexMh2low = Mh2 < Mh.flatten()[0]
@@ -802,7 +818,7 @@ def dMh_dt(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, massVector, z):
         Mhdot = dMhdz*cosmology.Hubinvyr(Cosmo_Parameters,z)*(1.0+z)
         return Mhdot
 
-    elif(Astro_Parameters.astromodel == 1): #21cmfast-like
+    elif(Astro_Parameters.astromodel == True): #21cmfast-like
         return Mh/Astro_Parameters.tstar*cosmology.Hubinvyr(Cosmo_Parameters,z)
     else:
         print('ERROR, MODEL is not defined')
@@ -813,37 +829,30 @@ def J_LW_Discrete(Astro_Parameters, Cosmo_Parameters, ClassCosmo, z, pop, rGreat
     #for units to work, c must be in Mpc/s and proton mass in solar masses
     #and convert from 1/Mpc^2 to 1/cm^2
     
-    Elw = (11.9 * u.eV).to(u.erg).value
-    deltaNulw = 5.8e14 #Hz
-    massProton = const.m_p.to(u.M_sun).value
+    Elw = (constants.Elw_eV * u.eV).to(u.erg).value
+    deltaNulw = constants.deltaNulw
+    massProton = constants.mprotoninMsun
+    redshiftFactor = 1.04 #max amount LW photons can redshift before being scattered, as in Visbal+1402.0882
     
     rTable = np.transpose([Cosmo_Parameters.chiofzint(z)]) + rGreater
     rTable[rTable > Cosmo_Parameters.chiofzint(50)] = Cosmo_Parameters.chiofzint(50) #cut down so that nothing exceeds zmax = 50
     zTable = Cosmo_Parameters.zfofRint(rTable)
     
-    ##HACFIX_ACAUSAL: COMMENT BELOW BACK IN!!!
+    ##HAC ACAUSAL: The below if statement allows for acausal Mmol
     if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
         zTable = np.array([z]).T * np.ones_like(rTable) #HAC: This fixes J_LW(z) = int SFRD(z) dz' such that no z' dependence in the integral (for some reason 21cmFAST does this). Delete when comparing J_LW() with Visbal+14 and Mebane+17
         
-    zMax = np.transpose([1.04*(1+z)-1])
+    zMax = np.transpose([redshiftFactor*(1+z)-1])
     rMax = Cosmo_Parameters.chiofzint(zMax)
     
     c1 = (1+z)**2/4/np.pi
     
-    if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
-        if pop == 3:
-            Nlw = 0.7184627927009317/6.5 * Astro_Parameters.N_alpha_perbaryon_III # ratio of 0.718 found by integrating Pop III Lyman alpha SED between LW and Lyman limits, = 12900 assuming Intermediate IMF from 2202.02099, equal to 4.86e-22 / (11.9 * u.eV).to(u.erg).value * 5.8e14
-            c2r = SFRD_III_cnvg_interp(zTable)
-        elif pop == 2:
-            Nlw = 0.6415670418531249/2.5 * Astro_Parameters.N_alpha_perbaryon_II # ratio of 0.64 found by integrating Pop II Lyman alpha SED between LW and Lyman limits, approximately 6200 for N_alpha_perbaryon_II = 9690
-            c2r = SFRD_II_interp(zTable)
-    elif(Cosmo_Parameters.Flag_emulate_21cmfast==False):
-        if pop == 3:
-            Nlw = 12900.0 #assuming Intermediate IMF from 2202.02099, equal to 4.86e-22 / (11.9 * u.eV).to(u.erg).value * 5.8e14
-            c2r = SFRD_III_cnvg_interp(zTable)
-        elif pop == 2:
-            Nlw = 6200.0
-            c2r = SFRD_II_interp(zTable)
+    if pop == 3:
+        Nlw = Astro_Parameters.N_LW_III
+        c2r = SFRD_III_cnvg_interp(zTable)
+    elif pop == 2:
+        Nlw = Astro_Parameters.N_LW_II
+        c2r = SFRD_II_interp(zTable)
             
 #    c2r *= Nlw * Elw / deltaNulw / massProton * (1 - np.heaviside(rTable - rMax, 1)) * (1 /u.yr/u.Mpc**2).to(1/u.s/u.cm**2).value #hard Heaviside cutoff, leads to instabilities & discontinuities
     c2r *= Nlw * Elw / deltaNulw / massProton * 0.5*(1 - np.tanh((rTable - rMax)/10)) * (1 /u.yr/u.Mpc**2).to(1/u.s/u.cm**2).value #smooth tanh cutoff, smoother function within 2-3% agreement with J_LW()
@@ -860,11 +869,11 @@ def dSFRDIII_dJ(Astro_Parameters, Cosmo_Parameters, ClassCosmo, HMF_interpolator
 
 
 def fesc_II(Astro_Parameters, Mh):
-    "f_escape for a halo of mass Mh [Msun] given Astro_Parameters"
+    "f_escape for a halo of mass Mh [Msun] given Astro_Parameters" #The pivot scale here for Pop II stars is at 1e10 solar masses
     return np.fmin(1.0, Astro_Parameters.fesc10 * pow(Mh/1e10,Astro_Parameters.alphaesc) )
 
 def fesc_III(Astro_Parameters, Mh):
-    "f_escape for a PopIII halo of mass Mh [Msun] given Astro_Parameters"
+    "f_escape for a PopIII halo of mass Mh [Msun] given Astro_Parameters" #The pivot scale here for Pop III stars is at 1e7 solar masses
     return np.fmin(1.0, Astro_Parameters.fesc7_III * pow(Mh/1e7,Astro_Parameters.alphaesc_III) )
     
 def vFit_2(vel2, aVel, bVel, cVel, dVel):

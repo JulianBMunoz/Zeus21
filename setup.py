@@ -19,5 +19,6 @@ setup(
            "mcfit",
            "classy",
            "numexpr",
+           "astropy",
        ],
 )
