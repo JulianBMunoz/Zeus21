@@ -424,6 +424,8 @@ class Power_Spectra:
 
         self.Deltasq_T21 = np.einsum('ijk...,ijkl...->kl...', self._allbetamatrix, self._allcorrs)
         self.Deltasq_T21 = (self.Deltasq_T21.T*T21_coefficients.T21avg**2).T
+        
+        self.Deltasq_dT21 = (np.einsum('ik...,ikl...->kl...',self._allbetas,self._allcorrs[0]).T*T21_coefficients.T21avg).T
 
 
         #Sum Linear Pop II and Pop III contributions
@@ -445,6 +447,7 @@ class Power_Spectra:
         self.Deltasq_T21_lin = np.einsum('ijk...,ijkl...->kl...', self._allbetamatrix, self._allcorrs_lin)
         self.Deltasq_T21_lin = (self.Deltasq_T21_lin.T*T21_coefficients.T21avg**2).T
 
+        self.Deltasq_dT21_lin = (np.einsum('ik...,ikl...->kl...',self._allbetas,self._allcorrs_lin[0]).T*T21_coefficients.T21avg).T
         print("Power Spectral Routine Done!")
 
 
