@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/Zeus21Logo-Horizontal.jpg" width=50% height=50%>
+<img src="docs/Zeus21Logo-Horizontal.jpg" width=75% height=75%>
 </p>
 
 # Zeus21: Lightning-fast simulations of cosmic dawn
