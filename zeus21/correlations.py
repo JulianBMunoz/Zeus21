@@ -357,7 +357,7 @@ class Power_Spectra:
 
         ##############################
 
-        print('STEP 3: Computing 21-cm Power Spectrum')
+        print('STEP 2: Computing 21-cm Power Spectrum')
         #and get the PS of T21 too.
         self._betaT = T21_coefficients.T_CMB/T21_coefficients.Tk_avg /(T21_coefficients.invTcol_avg**-1 - T21_coefficients.T_CMB) #multiplies \delta T_x and \delta T_ad [both dimensionful, not \deltaT/T]
         self._betaxa = 1./(1. + T21_coefficients.xa_avg)/T21_coefficients.xa_avg #multiplies \delta x_a [again not \delta xa/xa]

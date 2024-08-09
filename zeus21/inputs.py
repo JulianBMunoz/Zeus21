@@ -155,7 +155,7 @@ class Astro_Parameters:
 
     def __init__(self, Cosmo_Parameters, 
                     astromodel = 0,
-                    accretion_model = 1,
+                    accretion_model = 0,
 
                     alphastar = 0.5,
                     betastar = -0.5,
@@ -181,7 +181,7 @@ class Astro_Parameters:
 
                     sigmaUV=0.5,
 
-                    USE_POPIII = True,
+                    USE_POPIII = False,
 
                     alphastar_III = 0, 
                     betastar_III = 0,
