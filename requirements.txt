@@ -3,3 +3,5 @@ numpy
 scipy
 sphinx
 myst_parser
+numexpr
+astropy

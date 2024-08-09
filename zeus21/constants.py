@@ -5,6 +5,9 @@ Keep here all global flags, numerical constants, and conversion factors/units.
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
+
 """
 
 ######################
@@ -35,11 +38,14 @@ MsunToKm = 1.48
 MsunToMpc = MsunToKm * KmToMpc
 
 Msuntogram = 1.989e33
-GramtoGeV = 1/(6.022e23)
+GramtoGeV = 1 / 5.6095886e23
 MsuntoGeV = Msuntogram/GramtoGeV
 mH_GeV = 0.94
+#mprotoninMsun = mH_GeV/MsuntoGeV
+mprotoninMsun = 8.4118569e-58
 
-c_kms = 299792
+c_kms = 299792.458
+c_Mpcs = c_kms / MpcToKm
 
 yrTos = 3.154e7
 Mpctoyr = MpcToKm/c_kms/yrTos
@@ -47,6 +53,10 @@ Mpctoyr = MpcToKm/c_kms/yrTos
 
 ergToK = 7.24e15
 KtoeV = 8.62e-5
+
+#LW related constants
+Elw_eV = 11.9 #eV
+deltaNulw = 5.8e14 #Hz
 
 #X-ray related constants
 normLX_CONST = 1e40 #normalization of Xray luminosity, in units of erg/s/SFR = erg/s/(Msun/yr)
