@@ -5,6 +5,8 @@ Astrophysics tests for Zeus21, SFRD, global, and 21-cm PS
 Author: Julian B. Muñoz
 UT Austin and Harvard CfA - January 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
 """
 
 import pytest
@@ -24,6 +26,7 @@ HMFintclass = zeus21.HMF_interpolator(CosmoParams,ClassyCosmo)
 
 AstroParams = zeus21.Astro_Parameters(CosmoParams)
 ZMIN = 20.0 #down to which z we compute the evolution
+CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
 Coeffs = zeus21.get_T21_coefficients(CosmoParams, ClassyCosmo, AstroParams, HMFintclass, zmin=ZMIN)
 
 #also for exponential accretion:
@@ -43,23 +46,41 @@ iztest = min(range(len(Coeffs.zintegral)), key=lambda i: np.abs(Coeffs.zintegral
 def test_background():
 
     #test SFR first
-    sSFR = SFR(AstroParams, CosmoParams, HMFintclass, ztest)/HMFintclass.Mhtab
+    sSFR = SFR_II(AstroParams, CosmoParams, HMFintclass, HMFintclass.Mhtab, ztest, ztest)/HMFintclass.Mhtab
     assert( (0 <= sSFR).all()) #positive
     assert( (sSFR/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all()) #make sure sSFR/H < 1 (not all mass forms stars in a Hubble time)
+    
+    sSFR3 = SFR_III(AstroParams, CosmoParams, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
+    assert( (0 <= sSFR3).all()) #positive
+    assert( (sSFR3/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all()) #make sure sSFR3/H < 1 (not all mass forms stars in a Hubble time)
 
-    #repeat for the other 2 cases
-    sSFR_exp = SFR(AstroParams_expacc, CosmoParams, HMFintclass, ztest)/HMFintclass.Mhtab
+    
+    #repeat for Exp Accretion case
+    sSFR_exp = SFR_II(AstroParams_expacc, CosmoParams, HMFintclass, HMFintclass.Mhtab, ztest, ztest)/HMFintclass.Mhtab
     assert( (0 <= sSFR_exp).all())
     assert( (sSFR_exp/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all())
+    
+    sSFR_exp3 = SFR_III(AstroParams_expacc, CosmoParams, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
+    assert( (0 <= sSFR_exp3).all())
+    assert( (sSFR_exp3/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all())
 
-    sSFR_21cmfast = SFR(AstroParams_21cmfast, CosmoParams_21cmfast, HMFintclass, ztest)/HMFintclass.Mhtab
+    
+    #repeat for 21cmfast emulation case
+    sSFR_21cmfast = SFR_II(AstroParams_21cmfast, CosmoParams_21cmfast, HMFintclass, HMFintclass.Mhtab, ztest, ztest)/HMFintclass.Mhtab
     assert( (0 <= sSFR_21cmfast).all())
     assert( (sSFR_21cmfast/zeus21.cosmology.Hubinvyr(CosmoParams_21cmfast,ztest) <= 1).all())
+    
+    sSFR_21cmfast3 = SFR_III(AstroParams_expacc, CosmoParams_21cmfast, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
+    assert( (0 <= sSFR_21cmfast3).all())
+    assert( (sSFR_21cmfast3/zeus21.cosmology.Hubinvyr(CosmoParams_21cmfast,ztest) <= 1).all())
 
 
-    assert( (0 <= fesc(AstroParams, HMFintclass.Mhtab)).all())
-    assert( (fesc(AstroParams, HMFintclass.Mhtab <= 1)).all())
+    #test fesc
+    assert( (0 <= fesc_II(AstroParams, HMFintclass.Mhtab)).all())
+    assert( (fesc_II(AstroParams, HMFintclass.Mhtab <= 1)).all())
 
+    assert( (0 <= fesc_III(AstroParams, HMFintclass.Mhtab)).all())
+    assert( (fesc_III(AstroParams, HMFintclass.Mhtab <= 1)).all())
 
 
     #and sfrd calculation
@@ -85,10 +106,15 @@ def test_background():
     assert( (Coeffs.invTcol_avg >= Coeffs._invTs_avg).all()) #all Ts positive
     assert( (Coeffs._invTs_avg >= 1/Coeffs.T_CMB).all()) #all Ts positive
 
-    assert( (Coeffs.SFRDbar2D >= 0.0).all())
-    assert( (Coeffs.SFRD_avg >= 0.0).all())
-    assert( (Coeffs.niondot_avg >= 0.0).all())
-
+    assert( (Coeffs.SFRDbar2D_II >= 0.0).all())
+    assert( (Coeffs.SFRD_II_avg >= 0.0).all())
+    
+    assert( (Coeffs.SFRDbar2D_III >= 0.0).all())
+    assert( (Coeffs.SFRD_III_avg >= 0.0).all())
+    
+    assert( (Coeffs.niondot_avg_II >= 0.0).all())
+    assert( (Coeffs.niondot_avg_III >= 0.0).all())
+    
     assert( (Coeffs.xHI_avg >= 0.0).all())
     assert( (Coeffs.xHI_avg <= 1.0).all())
 
@@ -103,8 +129,7 @@ def test_background():
 
 
 #and test the PS too
-CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
-PS21 = zeus21.Power_Spectra(CosmoParams, ClassyCosmo, CorrFClass, Coeffs)
+PS21 = zeus21.Power_Spectra(CosmoParams, AstroParams, ClassyCosmo, CorrFClass, Coeffs)
 
 
 def test_pspec():
@@ -116,8 +141,11 @@ def test_pspec():
     ztest = 20.
     iztest = min(range(len(Coeffs.zintegral)), key=lambda i: np.abs(Coeffs.zintegral[i]-ztest))
 
-    assert((PS21.windowalpha[iztest,0] >= PS21.windowalpha[iztest,-1]).all()) #at fixed z it should go down with k
-    assert((PS21.windowxray[iztest,0] >= PS21.windowxray[iztest,-1]).all())
+    assert((PS21.windowalpha_II[iztest,0] >= PS21.windowalpha_II[iztest,-1]).all()) #at fixed z it should go down with k
+    assert((PS21.windowxray_II[iztest,0] >= PS21.windowxray_II[iztest,-1]).all())
+    
+    assert((PS21.windowalpha_III[iztest,0] >= PS21.windowalpha_III[iztest,-1]).all()) #at fixed z it should go down with k
+    assert((PS21.windowxray_III[iztest,0] >= PS21.windowxray_III[iztest,-1]).all())
 
     #make sure all correlations are sensible
     assert( (PS21.Deltasq_dxa[iztest]**2 <= 1.01* PS21.Deltasq_d[iztest] * PS21.Deltasq_xa[iztest]).all())
