@@ -107,7 +107,7 @@ def runclass(CosmologyIn):
         ClassCosmo.pars['k_eta'] = k_eta[P_eta > 0]
         ClassCosmo.pars['P_eta'] = P_eta[P_eta > 0]
         
-        print("HAC: Finished running CLASS a second time to get velocity transfer functions")
+#        print("HAC: Finished running CLASS a second time to get velocity transfer functions")
         
     else:
         ClassCosmo.pars['v_avg'] = 0.0
