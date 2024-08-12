@@ -137,7 +137,7 @@ class Power_Spectra:
 
     def __init__(self, Cosmo_Parameters, Astro_Parameters, ClassCosmo, Correlations, T21_coefficients, RSD_MODE=1):
 
-        print("STEP 0: Variable Setup")
+#        print("STEP 0: Variable Setup")
         #set up some variables
         self._rs_input_mcfit = Correlations.rlist_CF #just to make notation simpler
         self.klist_PS = Correlations._klistCF
@@ -170,16 +170,16 @@ class Power_Spectra:
 
         ##############################
 
-        print("STEP 1: Computing Nonlinear Power Spectra")
+#        print("STEP 1: Computing Nonlinear Power Spectra")
         #finally, get all the nonlinear correlation functions:
-        print("Computing Pop II-dependent power spectra")
+#        print("Computing Pop II-dependent power spectra")
         self.get_all_corrs_II(Cosmo_Parameters, Correlations, T21_coefficients)
         
         if Astro_Parameters.USE_POPIII == True:
-            print("Computing Pop IIxIII-dependent cross power spectra")
+#            print("Computing Pop IIxIII-dependent cross power spectra")
             self.get_all_corrs_IIxIII(Cosmo_Parameters, Correlations, T21_coefficients)
             
-            print("Computing Pop III-dependent power spectra")
+#            print("Computing Pop III-dependent power spectra")
             self.get_all_corrs_III(Cosmo_Parameters, Correlations, T21_coefficients)
         else:
             #bypases Pop III correlation routine and sets all Pop III-dependent correlations to zero
@@ -357,7 +357,7 @@ class Power_Spectra:
 
         ##############################
 
-        print('STEP 2: Computing 21-cm Power Spectrum')
+#        print('STEP 2: Computing 21-cm Power Spectrum')
         #and get the PS of T21 too.
         self._betaT = T21_coefficients.T_CMB/T21_coefficients.Tk_avg /(T21_coefficients.invTcol_avg**-1 - T21_coefficients.T_CMB) #multiplies \delta T_x and \delta T_ad [both dimensionful, not \deltaT/T]
         self._betaxa = 1./(1. + T21_coefficients.xa_avg)/T21_coefficients.xa_avg #multiplies \delta x_a [again not \delta xa/xa]
@@ -445,7 +445,7 @@ class Power_Spectra:
         self.Deltasq_T21_lin = np.einsum('ijk...,ijkl...->kl...', self._allbetamatrix, self._allcorrs_lin)
         self.Deltasq_T21_lin = (self.Deltasq_T21_lin.T*T21_coefficients.T21avg**2).T
 
-        print("Power Spectral Routine Done!")
+#        print("Power Spectral Routine Done!")
 
 
 
