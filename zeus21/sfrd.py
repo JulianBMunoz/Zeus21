@@ -388,9 +388,9 @@ class get_T21_coefficients:
         nu_linezpCube = constants.freqLyCont * (1 - (1.0/n_lineCube)**2)
         zGreaterCube = zGreaterMatrix_nonan.reshape(len(self.zintegral), len(self.Rtabsmoo), 1)
         nu_lineRRCube = nu_linezpCube * (1.+zGreaterCube)/(1+zpCube)
-
+        
         eps_alphaRR_II_Cube = Astro_Parameters.N_alpha_perbaryon_II/Cosmo_Parameters.mu_baryon_Msun  * sedLYAII_interp(nu_lineRRCube)
-
+        
         #the last nonzero index of the array is overestimated since only part of the spherical shell is within zmax_line. Correct by by dz/Delta z
         weights_recCube = np.heaviside(zmax_lineCube - zGreaterCube, 0.0)
         index_first0_weightsCube = np.where(np.diff(weights_recCube, axis = 1) == -1) #find index of last nonzero value. equals zero if two consecutive elements are 1 or 0, and -1 if two consecutive elements are [1,0]
@@ -404,6 +404,7 @@ class get_T21_coefficients:
         if Astro_Parameters.USE_POPIII == True:
             sedLYAIII_interp = interpolate.interp1d(nuLYA, Astro_Parameters.SED_LyA(nuLYA, pop = 3), kind = 'linear', bounds_error = False, fill_value = 0)
             eps_alphaRR_III_Cube = Astro_Parameters.N_alpha_perbaryon_III/Cosmo_Parameters.mu_baryon_Msun  * sedLYAIII_interp(nu_lineRRCube)
+            
             Jalpha_III = np.array(constants.fractions_recycle)[:len(n_recArray)].reshape(1,1,len(n_recArray)) * weights_recCube * eps_alphaRR_III_Cube
             LyAintegral_III = np.sum(Jalpha_III,axis=2)
             self.coeff2LyAzpRR_III = self.Rtabsmoo * self.dlogRR * self.SFRDbar2D_III * LyAintegral_III/ constants.yrTos/constants.Mpctocm**2

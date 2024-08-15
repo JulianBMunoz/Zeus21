@@ -38,11 +38,10 @@ MsunToKm = 1.48
 MsunToMpc = MsunToKm * KmToMpc
 
 Msuntogram = 1.989e33
-GramtoGeV = 1 / 5.6095886e23
+GramtoGeV = 1 / 5.6095886e23 # new corrected value
 MsuntoGeV = Msuntogram/GramtoGeV
-mH_GeV = 0.94
-#mprotoninMsun = mH_GeV/MsuntoGeV
-mprotoninMsun = 8.4118569e-58
+mH_GeV = 0.93827209
+mprotoninMsun = mH_GeV/MsuntoGeV
 
 c_kms = 299792.458
 c_Mpcs = c_kms / MpcToKm
