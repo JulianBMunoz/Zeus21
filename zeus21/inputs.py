@@ -354,10 +354,7 @@ class Astro_Parameters:
 
         nucut = constants.freqLyB #above and below this freq different power laws
         if pop == 2:
-            if self.Flag_emulate_21cmfast == True:
-                amps = np.array([0.75,0.25]) #HAC: found to be a better fit to 21cmfast, using f_recycle and total number of photons emitted in LyA band
-            elif self.Flag_emulate_21cmfast == False:
-                amps = np.array([0.68,0.32]) #Approx following the stellar spectra of BL05. Normalized to unity
+            amps = np.array([0.68,0.32]) #Approx following the stellar spectra of BL05. Normalized to unity
             indexbelow = 0.14 #if one of them zero worry about normalization
             normbelow = (1.0 + indexbelow)/(1.0 - (constants.freqLyA/nucut)**(1 + indexbelow)) * amps[0]
             indexabove = -8.0
