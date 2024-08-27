@@ -5,6 +5,8 @@ Compute UVLFs given our SFR and HMF models.
 Author: Julian B. Muñoz
 UT Austin - June 2023
 
+Edited by Hector Afonso G. Cruz
+JHU - July 2024
 """
 
 from . import cosmology
@@ -24,7 +26,7 @@ def MUV_of_SFR(SFRtab, kappaUV):
     'returns MUV, uses SFR. Dust added later in loglike.'
     #convert SFR to MUVs
     LUVtab = SFRtab/kappaUV
-    MUVtab = 51.63 - 2.5 * np.log10(LUVtab) #AB magnitude 
+    MUVtab = 51.63 - 2.5 * np.log10(LUVtab) #AB magnitude
     return MUVtab
 
 
@@ -41,7 +43,7 @@ def UVLF_binned(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, zcenter, zwi
 
 
     
-    SFRlist = SFR_II(Astro_Parameters,Cosmo_Parameters,HMF_interpolator,zcenter)
+    SFRlist = SFR_II(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, HMF_interpolator.Mhtab, zcenter, zcenter)
     sigmaUV = Astro_Parameters.sigmaUV
   
     if (constants.FLAG_RENORMALIZE_LUV == True): #lower the LUV (or SFR) to recover the true avg, not log-avg
@@ -61,12 +63,12 @@ def UVLF_binned(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, zcenter, zwi
     HMFtab = np.array([HMF_interpolator.HMF_int(HMF_interpolator.Mhtab,zcenter+dz*zwidth) for dz in DZ_TOINT])
     HMFcurr = np.sum(WEIGHTS_TOINT * HMFtab.T * biasM.T,axis=1)
 
-    #cannot directly 'dust' the theory since the properties of the IRX-beta relation are calibrated on observed MUV. Recursion instead: 
-    currMUV = MUVbarlist 
+    #cannot directly 'dust' the theory since the properties of the IRX-beta relation are calibrated on observed MUV. Recursion instead:
+    currMUV = MUVbarlist
     if(DUST_FLAG==True):
         currMUV2 = np.ones_like(currMUV)
         while(np.sum(np.abs((currMUV2-currMUV)/currMUV)) > 0.02):
-            currMUV = MUVbarlist + AUV(Astro_Parameters,zcenter,currMUV) 
+            currMUV = MUVbarlist + AUV(Astro_Parameters,zcenter,currMUV)
             currMUV2 = currMUV
            
     
@@ -91,7 +93,7 @@ def AUV(Astro_Parameters, z, MUV, HIGH_Z_DUST = True, _zmaxdata=8.0):
     
     betacurr = beta(z,MUV)
     
-    C0, C1 = Astro_Parameters.C0dust, Astro_Parameters.C1dust   
+    C0, C1 = Astro_Parameters.C0dust, Astro_Parameters.C1dust
     
     sigmabeta = 0.34 #from Bouwens 2014
     
@@ -113,7 +115,7 @@ def beta(z, MUV):
     _c = -2.33
 
     betaM0 = np.interp(z, zdatbeta, betaMUVatM0, left=betaMUVatM0[0], right=betaMUVatM0[-1])
-    dbetaM0 = (MUV - _MUV0).T * np.interp(z, zdatbeta, dbeta_dMUV, left=dbeta_dMUV[0], right=dbeta_dMUV[-1]) 
+    dbetaM0 = (MUV - _MUV0).T * np.interp(z, zdatbeta, dbeta_dMUV, left=dbeta_dMUV[0], right=dbeta_dMUV[-1])
     
     sol1 = (betaM0-_c) * np.exp(dbetaM0/(betaM0-_c))+_c #for MUV > MUV0
     sol2 = dbetaM0 + betaM0 #for MUV < MUV0
