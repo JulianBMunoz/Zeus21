@@ -203,7 +203,9 @@ class Astro_Parameters:
                  
 
                 ):
-
+        
+        #for internal functions in SED_LyA
+        self.Flag_emulate_21cmfast = Cosmo_Parameters.Flag_emulate_21cmfast
 
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True and astromodel == 0):
             print('ERROR, picked astromodel = 0 but tried to emulate 21cmFAST. They use astromodel = 1. Changing it!')
@@ -296,12 +298,14 @@ class Astro_Parameters:
         self.N_alpha_perbaryon_II=Nalpha_lyA_II #number of photons between LyA and Ly Cont. per baryon (from LB05)
         self.N_alpha_perbaryon_III=Nalpha_lyA_III #number of photons between LyA and Ly Cont. per baryon (from LB05)
         
+        #number of ionizing photons per baryon
         self.N_ion_perbaryon_II = 5000 #fixed for PopII-type (Salpeter)
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             self.N_ion_perbaryon_III = 44000 #fixed for PopIII-type, from Klessen & Glover 2023 Table A2 (2303.12500)
         elif(Cosmo_Parameters.Flag_emulate_21cmfast==False):
             self.N_ion_perbaryon_III = 52480 #fixed for PopIII-type, from Klessen & Glover 2023 Table A2 (2303.12500)
             
+        #number of LW photons per baryon
         if(Cosmo_Parameters.Flag_emulate_21cmfast==False):
             self.N_LW_II = 6200.0 #assuming BL05 stellar spectrum, equal to N_alpha_perbaryon_II * fraction of photons that fall in the LW band
             self.N_LW_III = 12900.0 #assuming Intermediate IMF from 2202.02099, equal to 4.86e-22 / (11.9 * u.eV).to(u.erg).value * 5.8e14
