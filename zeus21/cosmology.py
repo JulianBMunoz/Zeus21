@@ -180,6 +180,26 @@ def ST_HMF(Cosmo_Parameters, Mass, sigmaM, dsigmadM):
     return -A_ST * np.sqrt(2./np.pi) * nutilde * (1. + nutilde**(-2.0*p_ST)) * np.exp(-nutilde**2/2.0) * (Cosmo_Parameters.rho_M0 / (Mass * sigmaM)) * dsigmadM
 
 
+def Tink_HMF(Cosmo_Parameters, Mass, sigmaM, dsigmadM,z):
+    #Tinker08 form of the HMF. All in physical (no h) units. Form from App.A of Yung+23 (2309.14408)
+    f = f_GUREFT_physical(sigmaM,z)
+    return f*(Cosmo_Parameters.rho_M0 / (Mass)) * np.abs(dsigmadM/sigmaM)
+
+def f_GUREFT_physical(sigma,z):
+    #Fit in eq A2 in Yung+23 (2309.14408), fit to z<20 (Implementation thanks to Aaron Yung). Physical because no h.
+    #sigma(M,z) is the input, no growth here bc we use class with full sigma evolution
+    k = np.array([ 1.37657725e-01, -1.00382125e-02,  1.02963559e-03,  1.06641384e+00,
+        2.47557563e-02, -2.83342017e-03,  4.86693806e+00,  9.21235623e-02,
+       -1.42628278e-02,  1.19837952e+00,  1.42966892e-03, -3.30740460e-04])
+    A = lambda x: k[0] + k[1]*x  + k[2]*(x**2)
+    a = lambda x: k[3] + k[4]*x  + k[5]*(x**2) 
+    b = lambda x: k[6] + k[7]*x  + k[8]*(x**2)
+    c = lambda x: k[9] + k[10]*x + k[11]*(x**2)
+    sig = sigma
+    #cap coefficients at z=20 to avoid extrapolation
+    zuse = np.fmin(z,20.0)
+    return A(zuse) * (((sig/b(zuse))**(-a(zuse))) + 1.0 ) * np.exp(-c(zuse)/(sig**2))
+
 def PS_HMF_unnorm(Cosmo_Parameters, Mass, nu, dlogSdM):
     'Returns the Press-Schechter HMF (unnormalized since we will take ratios), given a halo Mass [Msun], nu = delta_tilde/S_tilde, with delta_tilde = delta_crit - delta_R, and variance S = sigma(M)^2 - sigma(R)^2. Used for 21cmFAST mode.'
 
@@ -241,7 +261,14 @@ class HMF_interpolator:
                 sigmaM = self.sigmaMhtab[iM,iz]
                 dsigmadM = self.dsigmadMMhtab[iM,iz]
 
-                self.HMFtab[iM,iz] = ST_HMF(Cosmo_Parameters, MM, sigmaM, dsigmadM)
+                if(Cosmo_Parameters.HMF_CHOICE == 'ST'):
+                    self.HMFtab[iM,iz] = ST_HMF(Cosmo_Parameters, MM, sigmaM, dsigmadM)
+                elif(Cosmo_Parameters.HMF_CHOICE == 'Yung'):
+                    self.HMFtab[iM,iz] = Tink_HMF(Cosmo_Parameters, MM, sigmaM, dsigmadM,zz)
+                else:
+                    print('ERROR, use a correct Cosmo_Parameters.HMF_CHOICE')
+                    self.HMFtab[iM,iz] = 0.0
+
 
 
 

@@ -19,7 +19,9 @@ from scipy.interpolate import interp1d
 class Cosmo_Parameters_Input:
     "Class to pass the 6 LCDM parameters as input"
 
-    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False, USE_RELATIVE_VELOCITIES = False):
+    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, 
+                 tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False, 
+                 USE_RELATIVE_VELOCITIES = False, HMF_CHOICE= "ST"):
 
         self.omegab = omegab
         self.omegac = omegac
@@ -37,6 +39,10 @@ class Cosmo_Parameters_Input:
         
         ###HAC: Flag whether to use v_cb
         self.USE_RELATIVE_VELOCITIES = USE_RELATIVE_VELOCITIES
+
+        #which HMF we use
+        self.HMF_CHOICE = HMF_CHOICE #which HMF functional form we use.
+        #options are "ST" the classic  Sheth-Tormen (f(nu)), "Yung" for the Tinker08 (f(sigma)) calibrated to Yung+23. Default ST
 
 
 
@@ -131,6 +137,7 @@ class Cosmo_Parameters:
 
 
         #HMF-related constants
+        self.HMF_CHOICE = CosmoParams_input.HMF_CHOICE 
         if(self.Flag_emulate_21cmfast == False): #standard, best fit ST from Schneider+
             self.a_ST = 0.707 #OG ST fit, or 0.85 to fit 1805.00021
             self.p_ST = 0.3
@@ -138,6 +145,7 @@ class Cosmo_Parameters:
             self.delta_crit_ST = 1.686
             self.a_corr_EPS = self.a_ST #correction to the eps relation between nu and nu' when doing extended PS. Follows hi-z simulation results from Schneider+
         elif(self.Flag_emulate_21cmfast == True): #emulate 21cmFAST, including HMF from Jenkins 2001
+            self.HMF_CHOICE = 'ST' #forced to match their functional form
             self.a_ST = 0.73
             self.p_ST = 0.175
             self.Amp_ST = 0.353
@@ -149,7 +157,6 @@ class Cosmo_Parameters:
 
 
 
-###Hector Afonso Cruz: Added PopIII parameters in Astro_Parameters
 class Astro_Parameters:
     "Class to pass the astro parameters as input"
 
@@ -213,7 +220,7 @@ class Astro_Parameters:
         else:
             self.astromodel = astromodel # which SFR model we use. 0=Gallumi-like, 1=21cmfast-like
 
-        ###HAC: Added PopIII parameters:
+        ###HAC: PopIII parameters:
         self.USE_POPIII = USE_POPIII
         
         self.alphastar_III = alphastar_III
