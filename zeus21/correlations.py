@@ -448,7 +448,7 @@ class Power_Spectra:
         self.Deltasq_T21_lin = (self.Deltasq_T21_lin.T*T21_coefficients.T21avg**2).T
 
         self.Deltasq_dT21_lin = (np.einsum('ik...,ikl...->kl...',self._allbetas,self._allcorrs_lin[0]).T*T21_coefficients.T21avg).T
-#       print("Power Spectral Routine Done!")
+#        print("Power Spectral Routine Done!")
 
 
 
