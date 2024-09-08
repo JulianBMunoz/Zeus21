@@ -74,9 +74,6 @@ class CoevalMaps:
             #then we make a map of the linear T21 fluctuation, better to use the cross to keep sign, at linear level same 
             PdT21 = Power_Spectrum.Deltasq_dT21[_iz]/k3over2pi2
 
-            # self.DeltasqdT21 = T21_coefficients.T21avg * ( Power_Spectrum._betaxa * Power_Spectrum.Deltasq_dxa_lin.T + Power_Spectrum._betaT * Power_Spectrum.Deltasq_dTx_lin.T+ Power_Spectrum._betad * Power_Spectrum.Deltasq_d_lin.T )
-            # PdT21 = self.DeltasqdT21[:,_iz]/k3over2pi2
-
             powerratioint = interp1d(klist,PdT21/Pd,fill_value=0.0,bounds_error=False)
 
 
@@ -87,7 +84,6 @@ class CoevalMaps:
             self.T21maplin= self.T21global + powerboxCtoR(pb,mapkin = T21lin_k)
 
             #now make a nonlinear correction, built as \sum_R [e^(gR dR) - gR dR]. Uncorrelatd with all dR so just a separate field!
-
             #NOTE: its not guaranteed to work, excess power can be negative in some cases! Not for each component xa, Tk, but yes for T21
             excesspower21 = (Power_Spectrum.Deltasq_T21[_iz,:]-Power_Spectrum.Deltasq_T21_lin[_iz,:])/k3over2pi2
 
