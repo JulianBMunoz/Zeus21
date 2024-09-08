@@ -5,6 +5,7 @@ from .correlations import *
 from .sfrd import get_T21_coefficients
 from .xrays import Xray_class
 from .UVLFs import UVLF_binned
+from .maps import CoevalMaps
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) #to silence unnecessary warning in mcfit
