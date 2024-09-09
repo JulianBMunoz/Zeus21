@@ -56,11 +56,11 @@ class Correlations:
             self._PkEtaCF = np.zeros_like(self._PklinCF)
             self.xiEta_RR_CF = np.zeros_like(self.xi_RR_CF)
     def _WinTH(self,k,R):
-        x = k * R
+        x = k * R + 1e-10 #to prevent silly overflows at 0
         return 3.0/x**2 * (np.sin(x)/x - np.cos(x))
 
     def _WinTH1D(self,k,R):
-        x = k * R
+        x = k * R + 1e-10 #to prevent silly overflows at 0
         return  np.sin(x)/x
 
     def _WinG(self,k,R):

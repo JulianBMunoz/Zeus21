@@ -30,6 +30,13 @@ class Cosmo_Parameters_Input:
         self.ns = ns
         self.tau_fid = tau_fid
 
+        #cosmo parameters that are NOT passed to CLASS:
+        self.alpha_WDM = alpha_WDM 
+        self.m_WDM = m_WDM #check if both selected later
+        if(self.alpha_WDM is not None or self.m_WDM is not None):
+            self.FLAG_nCDM = True
+        else:
+            self.FLAG_nCDM = False
         #other params for CLASS
         self.kmax_CLASS = kmax_CLASS
         self.zmax_CLASS = zmax_CLASS
@@ -57,6 +64,21 @@ class Cosmo_Parameters:
         self.As = CosmoParams_input.As
         self.ns = CosmoParams_input.ns
         self.tau_fid = CosmoParams_input.tau_fid
+
+        #nonCDM
+        self.m_WDM = CosmoParams_input.m_WDM
+        self.FLAG_nCDM = CosmoParams_input.FLAG_nCDM
+        self.alpha_WDM = CosmoParams_input.alpha_WDM
+        if(self.FLAG_nCDM == True):
+            if(self.m_WDM is not None):
+                if(self.alpha_WDM is not None):
+                    print("ERROR, can't choose both alpha_WDM and m_WDM not None, using only m_WDM")
+                # elif(self.m_WDM == np.inf):
+                #     self.alpha_WDM = 0.0
+                else:
+                    self.alpha_WDM = self.alpha_WDM_fun()
+
+
 
         #other params in the input
         self.kmax_CLASS = CosmoParams_input.kmax_CLASS
@@ -138,23 +160,57 @@ class Cosmo_Parameters:
 
         #HMF-related constants
         self.HMF_CHOICE = CosmoParams_input.HMF_CHOICE 
-        if(self.Flag_emulate_21cmfast == False): #standard, best fit ST from Schneider+
+        if(self.FLAG_nCDM==True):
+            self.HMF_CHOICE = 'ST' #forced to match since nonCDM is fit on ST with a=1
+            self.a_ST = 1.0 #absorbed into cWindow below
+            self.cWindow = 2.5 #as in 1412.2133
+            self.betaWindow= 10. #sharpk for WDM and fuzzyDM
+            if(self.Flag_emulate_21cmfast==True):
+                print('Error! Cannot do non-CDM and emulate21cmfast at the same time. Turning 21cmfast OFF.')
+                self.Flag_emulate_21cmfast == False
+        else:  
             self.a_ST = 0.707 #OG ST fit, or 0.85 to fit 1805.00021
+            self.cWindow = None #should be unused
+        
+        if(self.Flag_emulate_21cmfast == False): #standard, best fit ST or Tinker+Yung fit (this can be ignored for the latter except last term)
             self.p_ST = 0.3
             self.Amp_ST = 0.3222
             self.delta_crit_ST = 1.686
             self.a_corr_EPS = self.a_ST #correction to the eps relation between nu and nu' when doing extended PS. Follows hi-z simulation results from Schneider+
         elif(self.Flag_emulate_21cmfast == True): #emulate 21cmFAST, including HMF from Jenkins 2001
-            self.HMF_CHOICE = 'ST' #forced to match their functional form
+            if(self.HMF_CHOICE is not "ST"):
+                print('Error! If emulating Flag_emulate_21cmfast need HMF_CHOICE to be ST sheth tormen.')
+                self.HMF_CHOICE = 'ST' #forced to match their functional form
             self.a_ST = 0.73
             self.p_ST = 0.175
             self.Amp_ST = 0.353
             self.delta_crit_ST = 1.68
             self.a_corr_EPS = 1.0
-            
         else:
             print("Error! Have to set either Flag_emulate_21cmfast = True or False")
 
+
+            
+
+    'non-CDM window functions as implemented by Jo Verwohlt in 2404.17640'
+    def W_Smooth(self, k, R):
+        "generic values of beta and c chosen for ETHOS, for WDM choose beta=20 and c=2.5"
+        beta, c = self.betaWindow, self.cWindow
+        x = k*R/c
+        return 1./(1+x**beta)
+
+    def dW_dR_Smooth(self, k, R):
+        beta, c = self.betaWindow, self.cWindow
+        return -beta/R * self.W_Smooth(k, R)**2. * (k*R/c)**beta
+
+    def T_ncdm(self, k,beta=2.24,gamma=-4.46):
+        "Default beta and gamma chosen for WDM for now. nu=1.12, beta=2*nu and gamma -5/nu, 1704.07838"
+        "Note that the beta here is different from the window function. Classic physicist naming..."
+        return (1. + (self.alpha_WDM*k)**beta)**gamma
+
+    def alpha_WDM_fun(self):
+        'alpha_WDM for transfer function (powsp suppression) from WDM mass, in Mpc (com.), mWDM in keV'
+        return 0.049 * pow(self.m_WDM/1.0,-1.11) *pow(self.OmegaM/0.25,0.11) * pow(self.h_fid/0.7,1.22)/self.h_fid
 
 
 class Astro_Parameters:
@@ -164,20 +220,25 @@ class Astro_Parameters:
                     astromodel = 0,
                     accretion_model = 0,
 
-                    alphastar = 0.5,
-                    betastar = -0.5,
+                    
+                 alphastar = 0.5,
+                    dalphastar=0.0,
+                 betastar = -0.5,
                     epsstar = 0.1,
-                    Mc = 3e11,
+                    dbetastar=0.0, 
+                 Mc = 3e11,
                     dlog10epsstardz = 0.0,
 
-                    fesc10 = 0.1,
+                    dlog10Mcdz = 0.0,
+                 fesc10 = 0.1,
                     alphaesc = 0.0,
                     L40_xray = 3.0,
                     E0_xray = 500.,
                     alpha_xray = -1.0,
                     Emax_xray_norm=2000,
 
-                    Nalpha_lyA_II = 9690,
+                    
+                 Nalpha_lyA_II = 9690,
                     Nalpha_lyA_III = 17900,
 
                     Mturn_fixed = None,
@@ -186,7 +247,7 @@ class Astro_Parameters:
                     C0dust = 4.43,
                     C1dust = 1.99,
 
-                    sigmaUV=0.5,
+                    sigmaUV=0.5, dsigmaUV=0.0,
 
                     USE_POPIII = False,
 
@@ -259,9 +320,13 @@ class Astro_Parameters:
         self.dlog10epsstardz = dlog10epsstardz #dlog10epsilon/dz
         self._zpivot = 8.0 #fixed, at which z we evaluate eps and dlogeps/dz
         self.alphastar = alphastar #powerlaw index for lower masses
+        self.dalphastar = dalphastar #its dz derivative
         self.betastar = betastar #powerlaw index for higher masses, only for model 0
-        self.Mc = Mc # mass at which the power law cuts, only for model 0
+        self.dbetastar = dbetastar #its dz derivative
+        self.Mc = Mc # mass at which the power law cuts, only for model 0, in Msun
+        self.dlog10Mcdz = dlog10Mcdz #dlog10(Mc/Msun)/dz
         self.sigmaUV = sigmaUV #stochasticity (gaussian rms) in the halo-galaxy connection P(MUV | Mh) - TODO: only used in UVLF not sfrd
+        self.dsigmaUV = dsigmaUV #dsigmaUV/dz
 
         self.fstarmax = 1.0 #where we cap it
         

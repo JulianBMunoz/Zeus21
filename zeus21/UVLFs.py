@@ -44,7 +44,7 @@ def UVLF_binned(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, zcenter, zwi
 
     
     SFRlist = SFR_II(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, HMF_interpolator.Mhtab, zcenter, zcenter)
-    sigmaUV = Astro_Parameters.sigmaUV
+    sigmaUV = Astro_Parameters.sigmaUV + Astro_Parameters.dsigmaUV * (zcenter-Astro_Parameters.sigmaUV)
   
     if (constants.FLAG_RENORMALIZE_LUV == True): #lower the LUV (or SFR) to recover the true avg, not log-avg
         SFRlist/= np.exp((np.log(10)/2.5*sigmaUV)**2/2.0)
@@ -121,3 +121,23 @@ def beta(z, MUV):
     sol2 = dbetaM0 + betaM0 #for MUV < MUV0
     
     return sol1.T * np.heaviside(MUV - _MUV0, 0.5) + sol2.T * np.heaviside(_MUV0 - MUV, 0.5)
+
+
+def correct_AP_UVLF(z, Deltaz, Cosmo_Parameters_data,Cosmo_Parameters_out, MUV_data, PhiUV_data, errPhiUV_data,errPhiUV_asy_data=None):
+    "Corrects the observed UVLF from the assumed cosmology Cosmo_Parameters_data to another with Cosmo_Parameters_out. Note: no dust correction since it's applied directly to theory->model"
+
+    r_data = Cosmo_Parameters_data.chiofzint(z) #comoving distance
+    Vol_data = Cosmo_Parameters_data.chiofzint(z+Deltaz/2.0)**3 - Cosmo_Parameters_data.chiofzint(z-Deltaz/2.0)**3 #no need for 4pi/3 since it'll be a ratio
+    
+    r_out = Cosmo_Parameters_out.chiofzint(z)
+    Vol_out = Cosmo_Parameters_out.chiofzint(z+Deltaz/2.0)**3 - Cosmo_Parameters_out.chiofzint(z-Deltaz/2.0)**3 
+    
+    PhiUV_out = PhiUV_data * Vol_data/Vol_out
+    errPhiUV_out = errPhiUV_data * Vol_data/Vol_out
+    MUV_out = MUV_data - 5.0 * np.log10(r_out/r_data) #linear change so it doesn't affect bin sizes
+
+    if (errPhiUV_asy_data is not None): #for asymmetric errorbars, optional arg
+        errPhiUV_asy_out = errPhiUV_asy_data * Vol_data/Vol_out
+        return MUV_out, PhiUV_out, errPhiUV_out, errPhiUV_asy_out
+    else:
+        return MUV_out, PhiUV_out, errPhiUV_out

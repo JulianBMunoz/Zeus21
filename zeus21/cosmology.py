@@ -160,7 +160,7 @@ def adiabatic_index(z):
 
 
 def MhofRad(Cosmo_Parameters,R):
-    #convert input Radius in Mpc comoving to Mass in Msun
+    #convert input Radius in Mpc comoving to Mass in Msun, note that cWindow=1 for CDM and =2.5 for nonCDM is included in the window function not here!
     return Cosmo_Parameters.constRM *pow(R, 3.0)
 
 def RadofMh(Cosmo_Parameters,M):
@@ -231,10 +231,24 @@ class HMF_interpolator:
         if (Cosmo_Parameters.kmax_CLASS < 1.0/self.RMhtab[0]):
             print('Warning! kmax_CLASS may be too small! Run CLASS with higher kmax')
 
-        self.sigmaMhtab = np.array([[ClassCosmo.sigma(RR,zz) for zz in self.zHMFtab] for RR in self.RMhtab])
-
-        self._depsM=0.01 #for derivatives, relative to M
-        self.dsigmadMMhtab = np.array([[(ClassCosmo.sigma(RadofMh(Cosmo_Parameters, MM*(1+self._depsM)),zz)-ClassCosmo.sigma(RadofMh(Cosmo_Parameters, MM*(1-self._depsM)),zz))/(MM*2.0*self._depsM) for zz in self.zHMFtab] for MM in self.Mhtab])
+        if (Cosmo_Parameters.FLAG_nCDM==False): #for CDM we can use tophat sigma, computed in CLASS
+            self.sigmaMhtab = np.array([[ClassCosmo.sigma(RR,zz) for zz in self.zHMFtab] for RR in self.RMhtab])
+            self._depsM=0.01 #for derivatives, relative to M
+            self.dsigmadMMhtab = np.array([[(ClassCosmo.sigma(RadofMh(Cosmo_Parameters, MM*(1+self._depsM)),zz)-ClassCosmo.sigma(RadofMh(Cosmo_Parameters, MM*(1-self._depsM)),zz))/(MM*2.0*self._depsM) for zz in self.zHMFtab] for MM in self.Mhtab])
+        else: #we gotta do our own sigmas
+            self._klist_HMF = np.logspace(np.log10(1e-5), np.log10(Cosmo_Parameters.kmax_CLASS),10*len(Cosmo_Parameters._Rtabsmoo))
+            self.CLASS_Pk_CDM = np.array([ClassCosmo.pk(kk, 0.0) for kk in self._klist_HMF]) # P(k) in 1/Mpc^3
+            self._sigma2Mh_z0 = np.array([np.trapz(self.CLASS_Pk_CDM *Cosmo_Parameters.T_ncdm(self._klist_HMF) * Cosmo_Parameters.W_Smooth(self._klist_HMF, RR)**2*self._klist_HMF**2 , x=self._klist_HMF) for RR in self.RMhtab])/(2*np.pi**2)
+            self.sigmaMhtab = np.outer(np.sqrt(self._sigma2Mh_z0), growth(Cosmo_Parameters, self.zHMFtab) )
+            
+            if(Cosmo_Parameters.betaWindow > 9.99): #assume sharp-k, like in WDM
+                _kMhtab = Cosmo_Parameters.cWindow/self.RMhtab
+                self._dsigma2_dR_z0 = np.exp(np.interp(np.log(_kMhtab), np.log(self._klist_HMF) , np.log(self.CLASS_Pk_CDM) ))*Cosmo_Parameters.T_ncdm(_kMhtab)*_kMhtab**2/(2*np.pi**2)*(-_kMhtab/self.RMhtab)
+                self._dsigma2_dMh_z0 = self._dsigma2_dR_z0*self.RMhtab/(3.0 * self.Mhtab) #note that the cWindow is already in the dWindow/dR
+            else:
+                self._dsigma2_dR_z0 = np.array([np.trapz(self.CLASS_Pk_CDM *Cosmo_Parameters.T_ncdm(self._klist_HMF) * (Cosmo_Parameters.W_Smooth(self._klist_HMF, RR)*Cosmo_Parameters.dW_dR_Smooth(self._klist_HMF, RR))*self._klist_HMF**2 , x=self._klist_HMF) for RR in self.RMhtab])/(np.pi**2) #d(W^2)/dR = 2W dW/dR
+                self._dsigma2_dMh_z0 = self._dsigma2_dR_z0*self.RMhtab/(3.0 * self.Mhtab) #note that the cWindow is already in the dWindow/dR
+            self.dsigmadMMhtab = np.outer(self._dsigma2_dMh_z0, growth(Cosmo_Parameters, self.zHMFtab)**2 )/(2*self.sigmaMhtab)
 
 
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
@@ -290,7 +304,7 @@ class HMF_interpolator:
         #also build an interpolator for sigma(R) of the R we integrate over (for CD and EoR). These R >> Rhalo typically, so need new table.
         self.sigmaofRtab = np.array([[ClassCosmo.sigma(RR,zz) for zz in self.zHMFtab] for RR in Cosmo_Parameters._Rtabsmoo])
         self.fitRztab = [np.log(Cosmo_Parameters._Rtabsmoo), self.zHMFtab]
-        self.sigmaRintlog = RegularGridInterpolator(self.fitRztab, self.sigmaofRtab, bounds_error = False, fill_value = np.nan) #no need to log either
+        self.sigmaRintlog = RegularGridInterpolator(self.fitRztab, self.sigmaofRtab) #no need to log either
 
 
 

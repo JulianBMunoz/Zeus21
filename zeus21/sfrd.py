@@ -685,8 +685,12 @@ def Mmol(Astro_Parameters, ClassCosmo, J21LW_interp, z, vCB):
 def fstarofz(Astro_Parameters, Cosmo_Parameters, z, Mhlist):
     epsstar_ofz = Astro_Parameters.epsstar * 10**(Astro_Parameters.dlog10epsstardz * (z-Astro_Parameters._zpivot) )
     if Cosmo_Parameters.Flag_emulate_21cmfast == False:
-        return 2.0 * Cosmo_Parameters.OmegaB/Cosmo_Parameters.OmegaM * epsstar_ofz\
-        /(pow(Mhlist/Astro_Parameters.Mc,- Astro_Parameters.alphastar) + pow(Mhlist/Astro_Parameters.Mc,- Astro_Parameters.betastar) )
+        alphastar_ofz = Astro_Parameters.alphastar + Astro_Parameters.dalphastar * (z-Astro_Parameters._zpivot)
+    betastar_ofz = Astro_Parameters.betastar + Astro_Parameters.dbetastar * (z-Astro_Parameters._zpivot)
+    Mc_ofz = Astro_Parameters.Mc * 10**(Astro_Parameters.dlog10Mcdz * (z-Astro_Parameters._zpivot) )
+
+    return 2.0 * Cosmo_Parameters.OmegaB/Cosmo_Parameters.OmegaM * epsstar_ofz\
+        /(pow(Mhlist/Mc_ofz,- alphastar_ofz) + pow(Mhlist/Mc_ofz,- betastar_ofz) )
     elif Cosmo_Parameters.Flag_emulate_21cmfast == True:
         return Cosmo_Parameters.OmegaB/Cosmo_Parameters.OmegaM * epsstar_ofz /(pow(Mhlist/Astro_Parameters.Mc,- Astro_Parameters.alphastar))
 
