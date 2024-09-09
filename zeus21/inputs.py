@@ -21,7 +21,7 @@ class Cosmo_Parameters_Input:
 
     def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, 
                  tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False, 
-                 USE_RELATIVE_VELOCITIES = False, HMF_CHOICE= "ST"):
+                 USE_RELATIVE_VELOCITIES = False, HMF_CHOICE= "ST", alpha_WDM = None, m_WDM = None):
 
         self.omegab = omegab
         self.omegac = omegac
