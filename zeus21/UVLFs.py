@@ -44,7 +44,7 @@ def UVLF_binned(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, zcenter, zwi
 
     
     SFRlist = SFR_II(Astro_Parameters,Cosmo_Parameters,HMF_interpolator, HMF_interpolator.Mhtab, zcenter, zcenter)
-    sigmaUV = Astro_Parameters.sigmaUV + Astro_Parameters.dsigmaUV * (zcenter-Astro_Parameters.sigmaUV)
+    sigmaUV = Astro_Parameters.sigmaUV + Astro_Parameters.dsigmaUV * np.log(HMF_interpolator.Mhtab/Astro_Parameters.MhpivotsUV)
   
     if (constants.FLAG_RENORMALIZE_LUV == True): #lower the LUV (or SFR) to recover the true avg, not log-avg
         SFRlist/= np.exp((np.log(10)/2.5*sigmaUV)**2/2.0)

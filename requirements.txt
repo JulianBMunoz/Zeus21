@@ -5,3 +5,5 @@ sphinx
 myst_parser
 numexpr
 astropy
+pyfftw
+powerbox

@@ -326,7 +326,8 @@ class Astro_Parameters:
         self.Mc = Mc # mass at which the power law cuts, only for model 0, in Msun
         self.dlog10Mcdz = dlog10Mcdz #dlog10(Mc/Msun)/dz
         self.sigmaUV = sigmaUV #stochasticity (gaussian rms) in the halo-galaxy connection P(MUV | Mh) - TODO: only used in UVLF not sfrd
-        self.dsigmaUV = dsigmaUV #dsigmaUV/dz
+        self.dsigmaUV = dsigmaUV #dsigmaUV/dlnMh (@MhpivotsUV)
+        self.MhpivotsUV = 1e11 #at which Mh we set the pivot scale for sigmaUV(Mh), arbitrary and irrelevant
 
         self.fstarmax = 1.0 #where we cap it
         
