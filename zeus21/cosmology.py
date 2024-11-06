@@ -171,7 +171,7 @@ def RadofMh(Cosmo_Parameters,M):
 
 def ST_HMF(Cosmo_Parameters, Mass, sigmaM, dsigmadM):
     A_ST = Cosmo_Parameters.Amp_ST
-    a_ST = Cosmo_Parameters.a_ST
+    a_ST = Cosmo_Parameters.a_ST * Cosmo_Parameters.aHMFcorrection**2 #squared because its for barrier sq below
     p_ST = Cosmo_Parameters.p_ST
     delta_crit_ST = Cosmo_Parameters.delta_crit_ST
 
@@ -182,7 +182,7 @@ def ST_HMF(Cosmo_Parameters, Mass, sigmaM, dsigmadM):
 
 def Tink_HMF(Cosmo_Parameters, Mass, sigmaM, dsigmadM,z):
     #Tinker08 form of the HMF. All in physical (no h) units. Form from App.A of Yung+23 (2309.14408)
-    f = f_GUREFT_physical(sigmaM,z)
+    f = f_GUREFT_physical(sigmaM/Cosmo_Parameters.aHMFcorrection,z)
     return f*(Cosmo_Parameters.rho_M0 / (Mass)) * np.abs(dsigmadM/sigmaM)
 
 def f_GUREFT_physical(sigma,z):
@@ -202,7 +202,6 @@ def f_GUREFT_physical(sigma,z):
 
 def PS_HMF_unnorm(Cosmo_Parameters, Mass, nu, dlogSdM):
     'Returns the Press-Schechter HMF (unnormalized since we will take ratios), given a halo Mass [Msun], nu = delta_tilde/S_tilde, with delta_tilde = delta_crit - delta_R, and variance S = sigma(M)^2 - sigma(R)^2. Used for 21cmFAST mode.'
-
     return nu * np.exp(-Cosmo_Parameters.a_corr_EPS*nu**2/2.0) * dlogSdM* (1.0 / Mass)
     #written so that dsigmasq/dM appears directly, since that is not modified by EPS, whereas sigma_tot^2 = sigma^2(M) - sigma^2(R). The sigma in denominator will be sigma_tot
 
@@ -238,15 +237,15 @@ class HMF_interpolator:
         else: #we gotta do our own sigmas
             self._klist_HMF = np.logspace(np.log10(1e-5), np.log10(Cosmo_Parameters.kmax_CLASS),10*len(Cosmo_Parameters._Rtabsmoo))
             self.CLASS_Pk_CDM = np.array([ClassCosmo.pk(kk, 0.0) for kk in self._klist_HMF]) # P(k) in 1/Mpc^3
-            self._sigma2Mh_z0 = np.array([np.trapz(self.CLASS_Pk_CDM *Cosmo_Parameters.T_ncdm(self._klist_HMF) * Cosmo_Parameters.W_Smooth(self._klist_HMF, RR)**2*self._klist_HMF**2 , x=self._klist_HMF) for RR in self.RMhtab])/(2*np.pi**2)
+            self._sigma2Mh_z0 = np.array([np.trapz(self.CLASS_Pk_CDM *Cosmo_Parameters.T_ncdm(self._klist_HMF)**2 * Cosmo_Parameters.W_Smooth(self._klist_HMF, RR)**2*self._klist_HMF**2 , x=self._klist_HMF) for RR in self.RMhtab])/(2*np.pi**2)
             self.sigmaMhtab = np.outer(np.sqrt(self._sigma2Mh_z0), growth(Cosmo_Parameters, self.zHMFtab) )
             
-            if(Cosmo_Parameters.betaWindow > 9.99): #assume sharp-k, like in WDM
+            if(Cosmo_Parameters.betaWindow > 9.9): #assume sharp-k, like in WDM
                 _kMhtab = Cosmo_Parameters.cWindow/self.RMhtab
-                self._dsigma2_dR_z0 = np.exp(np.interp(np.log(_kMhtab), np.log(self._klist_HMF) , np.log(self.CLASS_Pk_CDM) ))*Cosmo_Parameters.T_ncdm(_kMhtab)*_kMhtab**2/(2*np.pi**2)*(-_kMhtab/self.RMhtab)
+                self._dsigma2_dR_z0 = np.exp(np.interp(np.log(_kMhtab), np.log(self._klist_HMF) , np.log(self.CLASS_Pk_CDM) ))*Cosmo_Parameters.T_ncdm(_kMhtab)**2*_kMhtab**2/(2*np.pi**2)*(-_kMhtab/self.RMhtab)
                 self._dsigma2_dMh_z0 = self._dsigma2_dR_z0*self.RMhtab/(3.0 * self.Mhtab) #note that the cWindow is already in the dWindow/dR
             else:
-                self._dsigma2_dR_z0 = np.array([np.trapz(self.CLASS_Pk_CDM *Cosmo_Parameters.T_ncdm(self._klist_HMF) * (Cosmo_Parameters.W_Smooth(self._klist_HMF, RR)*Cosmo_Parameters.dW_dR_Smooth(self._klist_HMF, RR))*self._klist_HMF**2 , x=self._klist_HMF) for RR in self.RMhtab])/(np.pi**2) #d(W^2)/dR = 2W dW/dR
+                self._dsigma2_dR_z0 = np.array([np.trapz(self.CLASS_Pk_CDM *Cosmo_Parameters.T_ncdm(self._klist_HMF)**2 * (Cosmo_Parameters.W_Smooth(self._klist_HMF, RR)*Cosmo_Parameters.dW_dR_Smooth(self._klist_HMF, RR))*self._klist_HMF**2 , x=self._klist_HMF) for RR in self.RMhtab])/(np.pi**2) #d(W^2)/dR = 2W dW/dR
                 self._dsigma2_dMh_z0 = self._dsigma2_dR_z0*self.RMhtab/(3.0 * self.Mhtab) #note that the cWindow is already in the dWindow/dR
             self.dsigmadMMhtab = np.outer(self._dsigma2_dMh_z0, growth(Cosmo_Parameters, self.zHMFtab)**2 )/(2*self.sigmaMhtab)
 
@@ -374,7 +373,7 @@ def T021(Cosmo_Parameters, z):
 #UNUSED bias, just for reference
 def bias_ST(Cosmo_Parameters, sigmaM):
     # from https://arxiv.org/pdf/1007.4201.pdf Table 1
-    a_ST = Cosmo_Parameters.a_ST
+    a_ST = Cosmo_Parameters.a_ST * Cosmo_Parameters.aHMFcorrection**2 #squared because its for barrier sq below
     p_ST = Cosmo_Parameters.p_ST
     delta_crit_ST = Cosmo_Parameters.delta_crit_ST
     nu = delta_crit_ST/sigmaM
@@ -385,7 +384,7 @@ def bias_ST(Cosmo_Parameters, sigmaM):
 def bias_Tinker(Cosmo_Parameters, sigmaM):
     #from https://arxiv.org/pdf/1001.3162.pdf, Delta=200
     delta_crit_ST = Cosmo_Parameters.delta_crit_ST
-    nu = delta_crit_ST/sigmaM
+    nu = delta_crit_ST/sigmaM * Cosmo_Parameters.aHMFcorrection
     
     #Tinker fit
     _Deltahalo = 200;

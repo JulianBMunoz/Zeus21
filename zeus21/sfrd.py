@@ -798,18 +798,19 @@ def SFR_III(Astro_Parameters, Cosmo_Parameters, ClassCosmo, HMF_interpolator, ma
 def dMh_dt(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, massVector, z):
     # units of M_sun/yr
     Mh = massVector
+    _logMh = np.log(Mh); 
     
     if(Astro_Parameters.astromodel == False): #GALLUMI-like
-        if(Astro_Parameters.accretion_model == False): #exponential accretion
+        if(Astro_Parameters.accretion_model == 0): #exponential accretion
             dMhdz = massVector * constants.ALPHA_accretion_exponential
             
-        elif(Astro_Parameters.accretion_model == True): #EPS accretion
+        elif(Astro_Parameters.accretion_model == 1): #EPS accretion
             
             Mh2 = Mh * constants.EPSQ_accretion
             indexMh2low = Mh2 < Mh.flatten()[0]
             Mh2[indexMh2low] = Mh.flatten()[0]
             
-            sigmaMh = HMF_interpolator.sigmaintlog((np.log(Mh), z))
+            sigmaMh = HMF_interpolator.sigmaintlog((_logMh, z))
             sigmaMh2 = HMF_interpolator.sigmaintlog((np.log(Mh2), z))
             sigmaMh2[np.full_like(sigmaMh2, fill_value=True, dtype = bool) * indexMh2low] = 1e99
             
@@ -817,9 +818,26 @@ def dMh_dt(Astro_Parameters, Cosmo_Parameters, HMF_interpolator, massVector, z):
             dzgrow = z*0.01
             dgrowthdz = (cosmology.growth(Cosmo_Parameters,z+dzgrow) - cosmology.growth(Cosmo_Parameters,z-dzgrow))/(2.0 * dzgrow)
             dMhdz = - Mh * np.sqrt(2/np.pi)/np.sqrt(sigmaMh2**2 - sigmaMh**2) *dgrowthdz/growth * Cosmo_Parameters.delta_crit_ST
+        
+        elif(Astro_Parameters.accretion_model == 2): #Furlanetto+16 model, halo-growth abundance matching
+            _dz = 0.1 #fixed for now, decide if you want growth rate over a spacific timescale
+            _dlogM = np.diff(_logMh); _dlogM = np.append(_dlogM,_dlogM[-1]); _dM = _dlogM * massVector
+            HMFz1 = np.exp(HMF_interpolator.logHMFint((_logMh, z+_dz))) #HMF at earlier z
+            HMFz2 = np.exp(HMF_interpolator.logHMFint((_logMh, z))) #HMF at z
             
+
+            intHMFz1 = np.flip(np.cumsum(np.flip(HMFz1 * _dM) )) #\int dn/dM *dM
+            intHMFz2 = np.flip(np.cumsum(np.flip(HMFz2 * _dM) ))
+
+            intHMFz1invint = interpolate.interp1d(np.log(intHMFz1),_logMh,bounds_error=False ,fill_value=(_logMh[0],_logMh[-1]))
+            Mhz1 = np.exp(intHMFz1invint(np.log(intHMFz2)) )
+            Mhz2 = Mh
+            dMhdz = (Mhz2 - Mhz1)/_dz   
         else:
             print("ERROR! Have to choose an accretion model in Astro_Parameters (accretion_model)")
+        if (Cosmo_Parameters.FLAG_nCDM==True):
+            _maxdMhdz = 2 * massVector * constants.ALPHA_accretion_exponential #2x exponential as max, ~Mh/tdyn at z~8
+            dMhdz = np.fmax(0.,np.fmin(dMhdz,_maxdMhdz)) #cap at at most _maxdMhdz, and ensure positive
         Mhdot = dMhdz*cosmology.Hubinvyr(Cosmo_Parameters,z)*(1.0+z)
         return Mhdot
 

@@ -21,7 +21,7 @@ class Cosmo_Parameters_Input:
 
     def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, 
                  tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False, 
-                 USE_RELATIVE_VELOCITIES = False, HMF_CHOICE= "ST", alpha_WDM = None, m_WDM = None):
+                 USE_RELATIVE_VELOCITIES = False, HMF_CHOICE= "ST", alpha_WDM = None, m_WDM = None, beta_WDM = 2.24, gamma_WDM =-4.46):
 
         self.omegab = omegab
         self.omegac = omegac
@@ -37,6 +37,8 @@ class Cosmo_Parameters_Input:
             self.FLAG_nCDM = True
         else:
             self.FLAG_nCDM = False
+        self.beta_WDM = beta_WDM #alpha beta and gamma are the parameters on T_ncdm 
+        self.gamma_WDM = gamma_WDM 
         #other params for CLASS
         self.kmax_CLASS = kmax_CLASS
         self.zmax_CLASS = zmax_CLASS
@@ -64,20 +66,6 @@ class Cosmo_Parameters:
         self.As = CosmoParams_input.As
         self.ns = CosmoParams_input.ns
         self.tau_fid = CosmoParams_input.tau_fid
-
-        #nonCDM
-        self.m_WDM = CosmoParams_input.m_WDM
-        self.FLAG_nCDM = CosmoParams_input.FLAG_nCDM
-        self.alpha_WDM = CosmoParams_input.alpha_WDM
-        if(self.FLAG_nCDM == True):
-            if(self.m_WDM is not None):
-                if(self.alpha_WDM is not None):
-                    print("ERROR, can't choose both alpha_WDM and m_WDM not None, using only m_WDM")
-                # elif(self.m_WDM == np.inf):
-                #     self.alpha_WDM = 0.0
-                else:
-                    self.alpha_WDM = self.alpha_WDM_fun()
-
 
 
         #other params in the input
@@ -157,21 +145,36 @@ class Cosmo_Parameters:
         self.indexminNL = (np.log(constants.MIN_R_NONLINEAR/self.Rsmmin)/self._dlogRR).astype(int)
         self.indexmaxNL = (np.log(constants.MAX_R_NONLINEAR/self.Rsmmin)/self._dlogRR).astype(int) + 1 #to ensure it captures MAX_R
 
-
+        #and for nonCDM
+        self.m_WDM = CosmoParams_input.m_WDM
+        self.FLAG_nCDM = CosmoParams_input.FLAG_nCDM
+        self.alpha_WDM = CosmoParams_input.alpha_WDM
+        self.beta_WDM = CosmoParams_input.beta_WDM
+        self.gamma_WDM = CosmoParams_input.gamma_WDM
+        if(self.FLAG_nCDM == True):
+            if(self.m_WDM is not None):
+                if(self.alpha_WDM is not None):
+                    print("ERROR, can't choose both alpha_WDM and m_WDM, using only alpha_WDM")
+                    self.m_WDM = self.m_WDM_fun()
+                else:
+                    self.alpha_WDM = self.alpha_WDM_fun()
+                    
         #HMF-related constants
-        self.HMF_CHOICE = CosmoParams_input.HMF_CHOICE 
         if(self.FLAG_nCDM==True):
-            self.HMF_CHOICE = 'ST' #forced to match since nonCDM is fit on ST with a=1
-            self.a_ST = 1.0 #absorbed into cWindow below
-            self.cWindow = 2.5 #as in 1412.2133
-            self.betaWindow= 10. #sharpk for WDM and fuzzyDM
+            self.aHMFcorrection  = np.sqrt(1.197)/1.02 #DIVIDES sigmas in HMF to compensate for barrier as in 1209.3018 but adjusted slightly to fit Yung+23 better
+            self.a_ST = 1.0 #absorbed into cWindow below not a free parameter anymore
+            self.cWindow = 2.2 #as in 1412.2133, designed to get the cutoff at the right M given k, slightly adjusted too to fit Yung+23 well
+            self.betaWindow= 100. #sharpk for WDM and fuzzyDM
+            # self.HMF_CHOICE = 'ST' #forced to match since nonCDM is fit on ST with a=1 - NOT NEEDED
             if(self.Flag_emulate_21cmfast==True):
                 print('Error! Cannot do non-CDM and emulate21cmfast at the same time. Turning 21cmfast OFF.')
                 self.Flag_emulate_21cmfast == False
         else:  
+            self.aHMFcorrection = 1.0 #no correction
             self.a_ST = 0.707 #OG ST fit, or 0.85 to fit 1805.00021
             self.cWindow = None #should be unused
-        
+
+        self.HMF_CHOICE = CosmoParams_input.HMF_CHOICE 
         if(self.Flag_emulate_21cmfast == False): #standard, best fit ST or Tinker+Yung fit (this can be ignored for the latter except last term)
             self.p_ST = 0.3
             self.Amp_ST = 0.3222
@@ -190,6 +193,9 @@ class Cosmo_Parameters:
             print("Error! Have to set either Flag_emulate_21cmfast = True or False")
 
 
+        
+
+
             
 
     'non-CDM window functions as implemented by Jo Verwohlt in 2404.17640'
@@ -203,14 +209,25 @@ class Cosmo_Parameters:
         beta, c = self.betaWindow, self.cWindow
         return -beta/R * self.W_Smooth(k, R)**2. * (k*R/c)**beta
 
-    def T_ncdm(self, k,beta=2.24,gamma=-4.46):
+    def T_ncdm(self, k):
         "Default beta and gamma chosen for WDM for now. nu=1.12, beta=2*nu and gamma -5/nu, 1704.07838"
         "Note that the beta here is different from the window function. Classic physicist naming..."
-        return (1. + (self.alpha_WDM*k)**beta)**gamma
+        return (1. + (self.alpha_WDM*k)**self.beta_WDM)**self.gamma_WDM
 
     def alpha_WDM_fun(self):
-        'alpha_WDM for transfer function (powsp suppression) from WDM mass, in Mpc (com.), mWDM in keV'
+        'alpha_WDM for transfer function (powsp suppression) from WDM mass, in Mpc (com.), mWDM in keV. Eq 7 in astro-ph/0501562, OG in astro-ph/0010389'
         return 0.049 * pow(self.m_WDM/1.0,-1.11) *pow(self.OmegaM/0.25,0.11) * pow(self.h_fid/0.7,1.22)/self.h_fid
+
+    def m_WDM_fun(self):
+        'inverse of alpha_WDM_fun'
+        return 1.0 #ASDASD-TODO-
+
+    def Mhalf_WDM_fun(self):
+        'Halo mass where HMF is reduced by 1/2, in Msun'
+        if self.m_WDM is not None:
+            return 3e8*(self.m_WDM/3.3)**(-3.33) #somewhat cosmology dependent, and also z dependent. Ballpark
+        else:
+            return 3e8 #ASDASD-TODO-
 
 
 class Astro_Parameters:
