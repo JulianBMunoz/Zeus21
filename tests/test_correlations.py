@@ -17,10 +17,11 @@ from zeus21.correlations import *
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) #to silence annyoing warning in mcfit
 
+UserParams = zeus21.User_Parameters()
 
 CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10.) #to speed up
 ClassyCosmo = zeus21.runclass(CosmoParams_input)
-CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo)
+CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
 
 CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
 

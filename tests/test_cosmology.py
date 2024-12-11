@@ -18,10 +18,11 @@ from zeus21.cosmology import *
 
 def test_cosmo():
 
+    UserParams = zeus21.User_Parameters()
 
     CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10., USE_RELATIVE_VELOCITIES=True) #to speed up
     ClassyCosmo = zeus21.runclass(CosmoParams_input)
-    CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo)
+    CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
 
     #velocity component testing
     assert(10.0 <= ClassyCosmo.pars['sigma_vcb'] <= 100.0)
@@ -70,7 +71,7 @@ def test_cosmo():
 
 
 
-    HMFintclass = zeus21.HMF_interpolator(CosmoParams,ClassyCosmo)
+    HMFintclass = zeus21.HMF_interpolator(UserParams,CosmoParams,ClassyCosmo)
     MM = HMFintclass.fitMztab[0][1]
     zz = HMFintclass.fitMztab[1][1]
     assert(HMFintclass.HMF_int(np.exp(MM),zz) == pytest.approx(HMFintclass.HMFtab[1,1],0.01))

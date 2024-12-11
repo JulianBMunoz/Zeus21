@@ -1,4 +1,4 @@
-from .inputs import Cosmo_Parameters_Input, Cosmo_Parameters, Astro_Parameters
+from .inputs import User_Parameters, Cosmo_Parameters_Input, Cosmo_Parameters, Astro_Parameters
 from .constants import *
 from .cosmology import *
 from .correlations import *

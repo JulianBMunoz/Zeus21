@@ -17,7 +17,7 @@ from .cosmology import n_H, HubinvMpc
 class Xray_class:
     "Class containing the X-ray functions that we want to pass to main calculation"
 
-    def __init__(self, User_Parameters, Cosmo_Parameters):
+    def __init__(self, Cosmo_Parameters):
 
         self.atomfractions = np.array([1,Cosmo_Parameters.x_He]) #fraction of baryons in HI and HeI, assumed to just be the avg cosmic
 #        self.atomfractions = np.array([Cosmo_Parameters.f_H,Cosmo_Parameters.f_He]) #fraction of baryons in HI and HeI, assumed to just be the avg cosmic
@@ -25,7 +25,7 @@ class Xray_class:
         self.TAUMAX=100. #max optical depth, cut to 0 after to avoid overflows
 
 
-    def optical_depth(self, Cosmo_Parameters, En,z,zp):
+    def optical_depth(self, User_Parameters, Cosmo_Parameters, En,z,zp):
         "Function that calculates the optical depth for a photon of energy En/eV from z to zp"
         Nzinttau = np.floor(10*User_Parameters.precisionboost).astype(int)
         #surprisingly it converges very quickly, since things are smooth functions of nu/z. Warning, make sure to tweak if SED is not a powerlaw!
@@ -64,7 +64,7 @@ class Xray_class:
 
 
 
-    def opacity_Xray(self, Cosmo_Parameters, En,z,zp):
+    def opacity_Xray(self, User_Parameters, Cosmo_Parameters, En,z,zp):
         "Returns opacity, see optical_depth() for the hard calculation."
 
         XRAY_OPACITY_MODEL = Cosmo_Parameters.Flag_emulate_21cmfast
@@ -72,9 +72,9 @@ class Xray_class:
 
 
         if(XRAY_OPACITY_MODEL==0): #0 is standard/regular.
-            return np.exp(-self.optical_depth(Cosmo_Parameters,En,z,zp))
+            return np.exp(-self.optical_depth(User_Parameters, Cosmo_Parameters,En,z,zp))
         elif (XRAY_OPACITY_MODEL==1): #1 is 21cmFAST-like (step-wise exp(-tau), either 1 or 0)
-            return np.heaviside(1.0 - self.optical_depth(Cosmo_Parameters,En,z,zp), 0.5)
+            return np.heaviside(1.0 - self.optical_depth(User_Parameters, Cosmo_Parameters,En,z,zp), 0.5)
         else:
             print('ERROR, choose a correct XRAY_OPACITY_MODEL')
 

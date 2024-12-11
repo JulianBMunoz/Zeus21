@@ -20,8 +20,8 @@ def test_inputs():
     from classy import Class
     ClassCosmo = Class()
     ClassCosmo.compute()
+    
     UserParams = zeus21.User_Parameters()
-
 
     paramscosmo = [0.022, 0.12, 0.07,2.1e-9, 0.96,0.05, 10., 10.]
     # omegab, omegac, h_fid, As, ns, tau_fid, kmax_CLASS, zmax_CLASS

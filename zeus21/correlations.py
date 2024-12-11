@@ -173,14 +173,14 @@ class Power_Spectra:
 #        print("STEP 1: Computing Nonlinear Power Spectra")
         #finally, get all the nonlinear correlation functions:
 #        print("Computing Pop II-dependent power spectra")
-        self.get_all_corrs_II(Cosmo_Parameters, Correlations, T21_coefficients)
+        self.get_all_corrs_II(User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients)
         
         if Astro_Parameters.USE_POPIII == True:
 #            print("Computing Pop IIxIII-dependent cross power spectra")
-            self.get_all_corrs_IIxIII(Cosmo_Parameters, Correlations, T21_coefficients)
+            self.get_all_corrs_IIxIII(User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients)
             
 #            print("Computing Pop III-dependent power spectra")
-            self.get_all_corrs_III(Cosmo_Parameters, Correlations, T21_coefficients)
+            self.get_all_corrs_III(User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients)
         else:
             #bypases Pop III correlation routine and sets all Pop III-dependent correlations to zero
             self._IIxIII_deltaxi_xa = np.zeros_like(self._II_deltaxi_xa)
@@ -539,7 +539,7 @@ class Power_Spectra:
 
 
 
-    def get_all_corrs_II(self, Cosmo_Parameters, Correlations, T21_coefficients):
+    def get_all_corrs_II(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
         "Returns the Pop II components of the correlation functions of all observables at each z in zintegral"
         #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
@@ -785,7 +785,7 @@ class Power_Spectra:
         return xiTotal
 
 
-    def get_all_corrs_III(self, Cosmo_Parameters, Correlations, T21_coefficients):
+    def get_all_corrs_III(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
         "Returns the Pop III components of the correlation functions of all observables at each z in zintegral"
         #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
@@ -938,7 +938,7 @@ class Power_Spectra:
 
 
 # Below is the old get_all_corrs function for reference. It has some EoR bubbles functions that are incomplete (I think)
-#def get_all_corrs(self, Cosmo_Parameters, Correlations, T21_coefficients):
+#def get_all_corrs(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
 #    "Returns the correlation function of all observable at each z in zintegral"
 #
 #    #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)

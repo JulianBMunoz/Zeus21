@@ -16,18 +16,21 @@ import numpy as np
 from zeus21.sfrd import *
 from zeus21.correlations import *
 
+UserParams = zeus21.User_Parameters()
 
 CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 100.) #to speed up a little
 ClassyCosmo = zeus21.runclass(CosmoParams_input)
-CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo)
-HMFintclass = zeus21.HMF_interpolator(CosmoParams,ClassyCosmo)
+CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
+HMFintclass = zeus21.HMF_interpolator(UserParams, CosmoParams,ClassyCosmo)
 
 
 
 AstroParams = zeus21.Astro_Parameters(CosmoParams)
+AstroParams_popIII = zeus21.Astro_Parameters(CosmoParams,USE_POPIII=True)
 ZMIN = 20.0 #down to which z we compute the evolution
 CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
-Coeffs = zeus21.get_T21_coefficients(CosmoParams, ClassyCosmo, AstroParams, HMFintclass, zmin=ZMIN)
+Coeffs = zeus21.get_T21_coefficients(UserParams, CosmoParams, ClassyCosmo, AstroParams, HMFintclass, zmin=ZMIN)
+Coeffs_popIII = zeus21.get_T21_coefficients(UserParams, CosmoParams, ClassyCosmo, AstroParams_popIII, HMFintclass, zmin=ZMIN)
 
 #also for exponential accretion:
 AstroParams_expacc = zeus21.Astro_Parameters(CosmoParams, accretion_model=0)
@@ -35,7 +38,7 @@ AstroParams_expacc = zeus21.Astro_Parameters(CosmoParams, accretion_model=0)
 #and for the 21cmfast mode:
 CosmoParams_input_21cmfast = zeus21.Cosmo_Parameters_Input(Flag_emulate_21cmfast=True)
 ClassyCosmo_21cmfast = zeus21.runclass(CosmoParams_input_21cmfast)
-CosmoParams_21cmfast = zeus21.Cosmo_Parameters(CosmoParams_input_21cmfast, ClassyCosmo_21cmfast)
+CosmoParams_21cmfast = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input_21cmfast, ClassyCosmo_21cmfast)
 AstroParams_21cmfast = zeus21.Astro_Parameters(CosmoParams_21cmfast, astromodel = 1)
 
 
@@ -50,7 +53,7 @@ def test_background():
     assert( (0 <= sSFR).all()) #positive
     assert( (sSFR/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all()) #make sure sSFR/H < 1 (not all mass forms stars in a Hubble time)
     
-    sSFR3 = SFR_III(AstroParams, CosmoParams, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
+    sSFR3 = SFR_III(AstroParams, CosmoParams, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs_popIII.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
     assert( (0 <= sSFR3).all()) #positive
     assert( (sSFR3/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all()) #make sure sSFR3/H < 1 (not all mass forms stars in a Hubble time)
 
@@ -60,7 +63,7 @@ def test_background():
     assert( (0 <= sSFR_exp).all())
     assert( (sSFR_exp/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all())
     
-    sSFR_exp3 = SFR_III(AstroParams_expacc, CosmoParams, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
+    sSFR_exp3 = SFR_III(AstroParams_expacc, CosmoParams, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs_popIII.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
     assert( (0 <= sSFR_exp3).all())
     assert( (sSFR_exp3/zeus21.cosmology.Hubinvyr(CosmoParams,ztest) <= 1).all())
 
@@ -70,7 +73,7 @@ def test_background():
     assert( (0 <= sSFR_21cmfast).all())
     assert( (sSFR_21cmfast/zeus21.cosmology.Hubinvyr(CosmoParams_21cmfast,ztest) <= 1).all())
     
-    sSFR_21cmfast3 = SFR_III(AstroParams_expacc, CosmoParams_21cmfast, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
+    sSFR_21cmfast3 = SFR_III(AstroParams_expacc, CosmoParams_21cmfast, ClassyCosmo, HMFintclass, HMFintclass.Mhtab, Coeffs_popIII.J21LW_interp_conv_avg, ztest, ztest, ClassyCosmo.pars['v_avg'])/HMFintclass.Mhtab
     assert( (0 <= sSFR_21cmfast3).all())
     assert( (sSFR_21cmfast3/zeus21.cosmology.Hubinvyr(CosmoParams_21cmfast,ztest) <= 1).all())
 
@@ -129,7 +132,7 @@ def test_background():
 
 
 #and test the PS too
-PS21 = zeus21.Power_Spectra(CosmoParams, AstroParams, ClassyCosmo, CorrFClass, Coeffs)
+PS21 = zeus21.Power_Spectra(UserParams, CosmoParams, AstroParams, ClassyCosmo, CorrFClass, Coeffs)
 
 
 def test_pspec():
