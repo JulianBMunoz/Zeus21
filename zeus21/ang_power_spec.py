@@ -9,7 +9,7 @@ import numpy as np, sys, os, scipy as sc
 #flat-sky routines
 ################################################################################################################
 
-def make_gaussian_realisation(flatskymyapparams, el, cl, cl22 = None, cl12 = None, bl = None, qu_or_eb = 'eb'):
+def make_gaussian_realisation(flatskymapparams, el, cl, cl22 = None, cl12 = None, bl = None, qu_or_eb = 'eb'):
 
     """
     Create Gaussian realisation of an underlying power spectrum.
@@ -17,7 +17,7 @@ def make_gaussian_realisation(flatskymyapparams, el, cl, cl22 = None, cl12 = Non
 
     Parameters
     ----------
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
     el: array
@@ -43,7 +43,7 @@ def make_gaussian_realisation(flatskymyapparams, el, cl, cl22 = None, cl12 = Non
         auto/cross power spectra.
         Either 1d or 2D depending on return_2d.
     """
-    nx, ny, dx, dy = mapparams
+    nx, ny, dx, dy = flatskymapparams
     arcmins2radians = np.radians(1/60.)
 
     dx *= arcmins2radians
@@ -55,16 +55,16 @@ def make_gaussian_realisation(flatskymyapparams, el, cl, cl22 = None, cl12 = Non
     ################################################
 
     #1d to 2d now
-    cltwod = cl_to_cl2d(el, cl, mapparams)
+    cltwod = cl_to_cl2d(el, cl, flatskymapparams)
     
     ################################################
-    if cl2 is not None: #for TE, etc. where two fields are correlated.
+    if cl22 is not None: #for TE, etc. where two fields are correlated.
         assert cl12 is not None
-        cltwod12 = cl_to_cl2d(el, cl12, mapparams)
-        cltwod22 = cl_to_cl2d(el, cl22, mapparams)
+        cltwod12 = cl_to_cl2d(el, cl12, flatskymapparams)
+        cltwod22 = cl_to_cl2d(el, cl22, flatskymapparams)
 
     ################################################
-    if cl2 is None:
+    if cl22 is None:
 
         cltwod = cltwod**0.5 * norm
         cltwod[np.isnan(cltwod)] = 0.
@@ -99,7 +99,7 @@ def make_gaussian_realisation(flatskymyapparams, el, cl, cl22 = None, cl12 = Non
 
     if bl is not None:
         if np.ndim(bl) != 2:
-            bl = cl_to_cl2d(el, bl, mapparams)
+            bl = cl_to_cl2d(el, bl, flatskymapparams)
         sim = np.fft.ifft2( np.fft.fft2(sim) * bl).real
 
     sim = sim - np.mean(sim)
@@ -115,7 +115,7 @@ def map2cl(flatskymapparams, flatskymap1, flatskymap2 = None, binsize = None, mi
 
     Parameters
     ----------
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
     flatskymap1: array
@@ -193,7 +193,7 @@ def cl_to_cl2d(el, cl, flatskymapparams):
         el values over which cl is defined
     cl: array
         power spectra cl that must be interpolated on the 2D grid.
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
 
@@ -219,7 +219,7 @@ def get_lxly(flatskymapparams):
     
     Parameters
     ----------
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
 
@@ -276,7 +276,7 @@ def convert_eb_qu(map1, map2, flatskymapparams, eb_to_qu = True):
         polarisation map1. E/B or Q/U.
     map2: array
         polarisation map2. E/B or Q/U.
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
     eb_to_qu: bool
@@ -312,7 +312,7 @@ def get_lpf_hpf(flatskymapparams, lmin_lmax, filter_type = 0):
 
     Parameters
     ----------
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
     lmin_lmax: int
@@ -351,7 +351,7 @@ def get_bpf(flatskymapparams, lmin, lmax):
 
     Parameters
     ----------
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
     lmin: int
@@ -382,7 +382,7 @@ def wiener_filter(flatskymapparams, cl_signal, cl_noise, el = None):
 
     Parameters
     ----------
-    flatskymyapparams: list
+    flatskymapparams: list
         [nx, ny, angres_am] where ny, nx = flatskymap.shape; and angres_am are the pixel resolution in arcminutes.
         for example: [100, 100, 0.5] is a 50' x 50' flatskymap that has dimensions 100 x 100 with angres_am = 0.5 arcminutes.
     cl_signal: array
