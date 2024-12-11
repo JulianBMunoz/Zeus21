@@ -21,7 +21,7 @@ from . import constants
 from .inputs import Cosmo_Parameters, Cosmo_Parameters_Input
 from .correlations import Correlations
 
-def cosmo_wrapper(Cosmo_Parameters_Input):
+def cosmo_wrapper(User_Parameters, Cosmo_Parameters_Input):
     """
     Wrapper function for all the cosmology. It takes Cosmo_Parameters_Input and returns:
     Cosmo_Parameters, Class_Cosmo, Correlations, HMF_interpolator
@@ -31,9 +31,9 @@ def cosmo_wrapper(Cosmo_Parameters_Input):
     ClassCosmo.compute()
 
     ClassyCosmo = runclass(Cosmo_Parameters_Input)
-    CosmoParams = Cosmo_Parameters(Cosmo_Parameters_Input, ClassyCosmo) 
+    CosmoParams = Cosmo_Parameters(User_Parameters, Cosmo_Parameters_Input, ClassyCosmo) 
     CorrFClass = Correlations(CosmoParams, ClassyCosmo)
-    HMFintclass = HMF_interpolator(CosmoParams,ClassyCosmo)
+    HMFintclass = HMF_interpolator(User_Parameters,CosmoParams,ClassyCosmo)
 
     return CosmoParams, ClassyCosmo, CorrFClass, HMFintclass
 
@@ -211,11 +211,11 @@ def PS_HMF_unnorm(Cosmo_Parameters, Mass, nu, dlogSdM):
 class HMF_interpolator:
     "Class that builds an interpolator of the HMF. Returns an interpolator"
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo):
+    def __init__(self, User_Parameters, Cosmo_Parameters, ClassCosmo):
 
         self._Mhmin = 1e5 #originally 1e5
         self._Mhmax = 1e14
-        self._NMhs = np.floor(35*constants.precisionboost).astype(int)
+        self._NMhs = np.floor(35*User_Parameters.precisionboost).astype(int)
         self.Mhtab = np.logspace(np.log10(self._Mhmin),np.log10(self._Mhmax),self._NMhs) # Halo mases in Msun
         self.RMhtab = RadofMh(Cosmo_Parameters, self.Mhtab)
 
@@ -224,7 +224,7 @@ class HMF_interpolator:
 
         self._zmin=Cosmo_Parameters.zmin_CLASS
         self._zmax = Cosmo_Parameters.zmax_CLASS
-        self._Nzs=np.floor(100*constants.precisionboost).astype(int)
+        self._Nzs=np.floor(100*User_Parameters.precisionboost).astype(int)
         self.zHMFtab = np.linspace(self._zmin,self._zmax,self._Nzs)
 
         #check resolution

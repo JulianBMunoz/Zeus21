@@ -20,6 +20,7 @@ def test_inputs():
     from classy import Class
     ClassCosmo = Class()
     ClassCosmo.compute()
+    UserParams = zeus21.User_Parameters()
 
 
     paramscosmo = [0.022, 0.12, 0.07,2.1e-9, 0.96,0.05, 10., 10.]
@@ -28,7 +29,7 @@ def test_inputs():
     CosmoParams_input = zeus21.Cosmo_Parameters_Input(omegab= paramscosmo[0], omegac = paramscosmo[1], h_fid = paramscosmo[2], As = paramscosmo[3], ns = paramscosmo[4], tau_fid = paramscosmo[5], kmax_CLASS = paramscosmo[6], zmax_CLASS = paramscosmo[7])
 
     ClassyCosmo = zeus21.runclass(CosmoParams_input)
-    CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo)
+    CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
 
     #make sure all the input parameters are the same as we use throughout
     assert(CosmoParams.omegab == CosmoParams_input.omegab)
@@ -80,7 +81,7 @@ def test_inputs():
     #also run the 21cmfast-like model
     CosmoParams_input_21cmfast = zeus21.Cosmo_Parameters_Input(Flag_emulate_21cmfast=True)
     ClassyCosmo_21cmfast = zeus21.runclass(CosmoParams_input_21cmfast)
-    CosmoParams_21cmfast = zeus21.Cosmo_Parameters(CosmoParams_input_21cmfast, ClassyCosmo_21cmfast)
+    CosmoParams_21cmfast = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input_21cmfast, ClassyCosmo_21cmfast)
     AstroParams_21cmfast = zeus21.Astro_Parameters(CosmoParams_21cmfast, astromodel = 1)
 
 

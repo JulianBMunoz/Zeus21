@@ -31,7 +31,7 @@ class get_T21_coefficients:
     -LyA coupling. \
     TODO: reionization/EoR"
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo, Astro_Parameters, HMF_interpolator, zmin = 10.0):
+    def __init__(self, User_Parameters, Cosmo_Parameters, ClassCosmo, Astro_Parameters, HMF_interpolator, zmin = 10.0):
     
         #####################################################################################################
         ### STEP 0: Defining Constants and storage variables
@@ -43,7 +43,7 @@ class get_T21_coefficients:
         #define the integration redshifts, goes as log(z) (1+ doesn't change sampling much)
         self.zmax_integral = constants.ZMAX_INTEGRAL
         self.zmin = zmin
-        self._dlogzint_target = 0.02/constants.precisionboost
+        self._dlogzint_target = 0.02/User_Parameters.precisionboost
         self.Nzintegral = np.ceil(1.0 + np.log(self.zmax_integral/self.zmin)/self._dlogzint_target).astype(int)
         self.dlogzint = np.log(self.zmax_integral/self.zmin)/(self.Nzintegral-1.0) #exact value rather than input target above
         self.zintegral = np.logspace(np.log10(self.zmin), np.log10(self.zmax_integral), self.Nzintegral) #note these are also the z at which we "observe", to share computational load
@@ -118,7 +118,7 @@ class get_T21_coefficients:
         #initialize Xrays
         Xrays = Xray_class(Cosmo_Parameters)
         _Energylist = Astro_Parameters.Energylist
-        Nzinttau = np.floor(10*constants.precisionboost).astype(int)
+        Nzinttau = np.floor(10*User_Parameters.precisionboost).astype(int)
         
         #####################################################################################################
         ### STEP 1: Recursive routine to compute average Pop II and III SFRDs with LW feedback
@@ -475,7 +475,7 @@ class get_T21_coefficients:
         ### STEP 7: Non-Linear Correction Factors
         #correct for nonlinearities in <(1+d)SFRD>, only if doing nonlinear stuff. We're assuming that (1+d)SFRD ~ exp(gamma*d), so the "Lagrangian" gamma was gamma-1. We're using the fact that for a lognormal variable X = log(Z), with  Z=\gamma \delta, <X> = exp(\gamma^2 \sigma^2/2).
 
-        if(constants.C2_RENORMALIZATION_FLAG==True):
+        if(User_Parameters.C2_RENORMALIZATION_FLAG==True):
             _corrfactorEulerian_II = 1.0 + (self.gamma_II_index2D-1.0)*self.sigmaofRtab**2
             _corrfactorEulerian_II=_corrfactorEulerian_II.T
             _corrfactorEulerian_II[0:Cosmo_Parameters.indexminNL] = _corrfactorEulerian_II[Cosmo_Parameters.indexminNL] #for R<R_NL we just fix it to the RNL value, as we do for the correlation function. We could cut the sum but this keeps those scales albeit approximately
@@ -547,7 +547,7 @@ class get_T21_coefficients:
         else:
             self._coeff_Ja_xa_0 = 8.0*np.pi*(constants.wavelengthLyA/1e7)**2 * constants.widthLyA * constants.Tstar_21/(9.0*constants.A10_21*self.T_CMB) #units of (cm^2 s Hz sr), convert from Ja to xa. should give 1.81e11/(1+self.zintegral) for Tcmb_0=2.725 K
 
-        if(constants.FLAG_WF_ITERATIVE==True): #iteratively find Tcolor and Ts. Could initialize one to zero, but this should converge faster
+        if(User_Parameters.FLAG_WF_ITERATIVE==True): #iteratively find Tcolor and Ts. Could initialize one to zero, but this should converge faster
             _invTs_tryfirst = 1.0/self.T_CMB
             self._invTs_avg = 1.0/self.Tk_avg
         else: #no correction (ie Tcolor=Tk, Salpha= exp(...))

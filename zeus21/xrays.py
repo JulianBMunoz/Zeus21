@@ -17,7 +17,7 @@ from .cosmology import n_H, HubinvMpc
 class Xray_class:
     "Class containing the X-ray functions that we want to pass to main calculation"
 
-    def __init__(self, Cosmo_Parameters):
+    def __init__(self, User_Parameters, Cosmo_Parameters):
 
         self.atomfractions = np.array([1,Cosmo_Parameters.x_He]) #fraction of baryons in HI and HeI, assumed to just be the avg cosmic
 #        self.atomfractions = np.array([Cosmo_Parameters.f_H,Cosmo_Parameters.f_He]) #fraction of baryons in HI and HeI, assumed to just be the avg cosmic
@@ -27,7 +27,7 @@ class Xray_class:
 
     def optical_depth(self, Cosmo_Parameters, En,z,zp):
         "Function that calculates the optical depth for a photon of energy En/eV from z to zp"
-        Nzinttau = np.floor(10*constants.precisionboost).astype(int)
+        Nzinttau = np.floor(10*User_Parameters.precisionboost).astype(int)
         #surprisingly it converges very quickly, since things are smooth functions of nu/z. Warning, make sure to tweak if SED is not a powerlaw!
 
         Envec = np.asarray([En]) if np.isscalar(En) else np.asarray(En)
