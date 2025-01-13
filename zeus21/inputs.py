@@ -17,7 +17,7 @@ from scipy.interpolate import interp1d
 
 class User_Parameters:
     """
-    User paramneters for Zeus21.
+    User parameters for Zeus21.
 
     Calling the class without specifying any parameter will set them to their default values, but they can also be directly set when creating the class:
 
@@ -46,7 +46,8 @@ class User_Parameters:
     FLAG_WF_ITERATIVE: bool
         Whether to iteratively do the WF correction as in Hirata2006.
 
-    Attributes:
+    Attributes
+    ----------
     C2_RENORMALIZATION_FLAG: int (0 or 1)
         Whether to renormalize the C2 oefficients (appendix in 2302.08506).
     """
@@ -212,7 +213,7 @@ class Cosmo_Parameters:
 class Astro_Parameters:
     "Class to pass the astro parameters as input"
 
-    def __init__(self, Cosmo_Parameters, 
+    def __init__(self, UserParams, Cosmo_Parameters, 
                     astromodel = 0,
                     accretion_model = 0,
 

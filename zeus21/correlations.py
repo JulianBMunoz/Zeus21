@@ -25,7 +25,7 @@ from . import cosmology
 class Correlations:
     "Class that calculates and keeps the correlation functions."
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo):
+    def __init__(self, UserParams, Cosmo_Parameters, ClassCosmo):
 
 
         #we choose the k to match exactly the log FFT of input Rtabsmoo.

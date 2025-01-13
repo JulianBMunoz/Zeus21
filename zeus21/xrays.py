@@ -17,7 +17,7 @@ from .cosmology import n_H, HubinvMpc
 class Xray_class:
     "Class containing the X-ray functions that we want to pass to main calculation"
 
-    def __init__(self, Cosmo_Parameters):
+    def __init__(self, User_Parameters, Cosmo_Parameters):
 
         self.atomfractions = np.array([1,Cosmo_Parameters.x_He]) #fraction of baryons in HI and HeI, assumed to just be the avg cosmic
 #        self.atomfractions = np.array([Cosmo_Parameters.f_H,Cosmo_Parameters.f_He]) #fraction of baryons in HI and HeI, assumed to just be the avg cosmic
