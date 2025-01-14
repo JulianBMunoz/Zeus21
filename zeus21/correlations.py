@@ -644,7 +644,7 @@ class Power_Spectra:
             
         return 1
 
-    def get_all_corrs_IIxIII(self, Cosmo_Parameters, Correlations, T21_coefficients):
+    def get_all_corrs_IIxIII(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
         "Returns the Pop IIxIII cross-correlation function of all observables at each z in zintegral"
         #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
