@@ -32,7 +32,7 @@ def cosmo_wrapper(User_Parameters, Cosmo_Parameters_Input):
 
     ClassyCosmo = runclass(Cosmo_Parameters_Input)
     CosmoParams = Cosmo_Parameters(User_Parameters, Cosmo_Parameters_Input, ClassyCosmo) 
-    CorrFClass = Correlations(CosmoParams, ClassyCosmo)
+    CorrFClass = Correlations(User_Parameters, CosmoParams, ClassyCosmo)
     HMFintclass = HMF_interpolator(User_Parameters,CosmoParams,ClassyCosmo)
 
     return CosmoParams, ClassyCosmo, CorrFClass, HMFintclass
