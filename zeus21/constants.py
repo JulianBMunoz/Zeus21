@@ -10,22 +10,6 @@ JHU - July 2024
 
 """
 
-######################
-###   User Flags   ###
-######################
-
-
-precisionboost = 1.0 #makes integrals take more points for boost in precision. Baseline = 1.0
-FLAG_FORCE_LINEAR_CF = 0 #0 to do standard calculation, 1 to force linearization of correlation function
-
-MIN_R_NONLINEAR = 2.0 #minimum radius R/cMpc in which we start doing the nonlinear calculation. Below ~1 it will blow up because sigma > 1 eventually, and our exp(\delta) approximation breaks. Check if you play with it and if you change Window().
-MAX_R_NONLINEAR = 100.0 #max radius R/cMpc in which we start doing the nonlinear calculation. Above this it is very linear
-
-FLAG_DO_DENS_NL = False #whether to do the nonlinear (ie lognormal) calculation for the density field itself and its cross correlations. Small (<3%) correction in dd, but non trivial (~10%) in d-xa and d-Tx
-
-FLAG_WF_ITERATIVE = True #whether to iteratively do the WF correction as in Hirata2006.
-
-
 ###############################
 ###   Units and constants   ###
 ###############################
@@ -86,7 +70,7 @@ A10_21 = 2.85e-15 #1/s, Einstein 10 coeff for HI
 
 
 #whether to renormalize the C2 oefficients (appendix in 2302.08506)
-C2_RENORMALIZATION_FLAG = 1 - FLAG_FORCE_LINEAR_CF
+#C2_RENORMALIZATION_FLAG = 1 - FLAG_FORCE_LINEAR_CF
 
 
 RGauss_factor = 0.633 #factor RG = F * RTH between gaussian and Tophat masses = 4^1/3/sqrt(2*np.pi)

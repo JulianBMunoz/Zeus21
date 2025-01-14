@@ -25,7 +25,7 @@ from . import cosmology
 class Correlations:
     "Class that calculates and keeps the correlation functions."
 
-    def __init__(self, Cosmo_Parameters, ClassCosmo):
+    def __init__(self, UserParams, Cosmo_Parameters, ClassCosmo):
 
 
         #we choose the k to match exactly the log FFT of input Rtabsmoo.
@@ -135,7 +135,7 @@ class Correlations:
 class Power_Spectra:
     "Get power spetrum from correlation functions and coefficients"
 
-    def __init__(self, Cosmo_Parameters, Astro_Parameters, ClassCosmo, Correlations, T21_coefficients, RSD_MODE=1):
+    def __init__(self, User_Parameters, Cosmo_Parameters, Astro_Parameters, ClassCosmo, Correlations, T21_coefficients, RSD_MODE=1):
 
 #        print("STEP 0: Variable Setup")
         #set up some variables
@@ -173,14 +173,14 @@ class Power_Spectra:
 #        print("STEP 1: Computing Nonlinear Power Spectra")
         #finally, get all the nonlinear correlation functions:
 #        print("Computing Pop II-dependent power spectra")
-        self.get_all_corrs_II(Cosmo_Parameters, Correlations, T21_coefficients)
+        self.get_all_corrs_II(User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients)
         
         if Astro_Parameters.USE_POPIII == True:
 #            print("Computing Pop IIxIII-dependent cross power spectra")
-            self.get_all_corrs_IIxIII(Cosmo_Parameters, Correlations, T21_coefficients)
+            self.get_all_corrs_IIxIII(User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients)
             
 #            print("Computing Pop III-dependent power spectra")
-            self.get_all_corrs_III(Cosmo_Parameters, Correlations, T21_coefficients)
+            self.get_all_corrs_III(User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients)
         else:
             #bypases Pop III correlation routine and sets all Pop III-dependent correlations to zero
             self._IIxIII_deltaxi_xa = np.zeros_like(self._II_deltaxi_xa)
@@ -286,7 +286,7 @@ class Power_Spectra:
         self._Pk_dTx_II =  self._Pk_dTx_lin_II
         self._Pk_dTx_III =  self._Pk_dTx_lin_III
 
-        if(constants.FLAG_DO_DENS_NL): #note that the nonlinear terms (cross and auto) below here have the growth already accounted for
+        if(User_Parameters.FLAG_DO_DENS_NL): #note that the nonlinear terms (cross and auto) below here have the growth already accounted for
 
             self._d_Pk_d_nl = self.get_list_PS(self._II_deltaxi_d, T21_coefficients.zintegral)
             self._Pk_d += self._d_Pk_d_nl
@@ -539,7 +539,7 @@ class Power_Spectra:
 
 
 
-    def get_all_corrs_II(self, Cosmo_Parameters, Correlations, T21_coefficients):
+    def get_all_corrs_II(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
         "Returns the Pop II components of the correlation functions of all observables at each z in zintegral"
         #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
@@ -572,7 +572,7 @@ class Power_Spectra:
         self._II_deltaxi_xa = np.einsum('ijkl->il', coeffmatrixxa * expGammaCorrMinusLinear, optimize = True)
         self._II_deltaxi_xa *= np.array([coeffzp1xa]).T**2 #brings it to xa units
 
-        if (constants.FLAG_DO_DENS_NL):
+        if (User_Parameters.FLAG_DO_DENS_NL):
             D_coeffR1xa = coeffR1xa.reshape(*coeffR1xa.shape, 1)
             D_gammaR1 = gammaR1.reshape(*gammaR1.shape , 1)
             D_growthRmatrix = growthRmatrix[:,:1].reshape(*growthRmatrix[:,:1].shape, 1)
@@ -627,7 +627,7 @@ class Power_Spectra:
         self._II_deltaxi_xaTx *= np.array([coeffzp1xa * _coeffTx_units]).T
 
 
-        if (constants.FLAG_DO_DENS_NL):
+        if (User_Parameters.FLAG_DO_DENS_NL):
             D_coeffR2Tx = coeffR2Tx.reshape(1, *coeffR2Tx.shape, 1)
             D_coeffzp2Tx = coeffzp2Tx.flatten().reshape(1, *coeffzp2Tx.flatten().shape, 1)
             D_gammaR2 = gammaR2.reshape(1, *gammaR2.shape , 1)
@@ -644,7 +644,7 @@ class Power_Spectra:
             
         return 1
 
-    def get_all_corrs_IIxIII(self, Cosmo_Parameters, Correlations, T21_coefficients):
+    def get_all_corrs_IIxIII(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
         "Returns the Pop IIxIII cross-correlation function of all observables at each z in zintegral"
         #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
@@ -785,7 +785,7 @@ class Power_Spectra:
         return xiTotal
 
 
-    def get_all_corrs_III(self, Cosmo_Parameters, Correlations, T21_coefficients):
+    def get_all_corrs_III(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
         "Returns the Pop III components of the correlation functions of all observables at each z in zintegral"
         #HAC: I deleted the bubbles and EoR part, to be done later.....
         #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
@@ -834,7 +834,7 @@ class Power_Spectra:
         self._III_deltaxi_xa = np.einsum('ijkl->il', coeffmatrixxa * totalCorr , optimize = True)  # equivalent to self._III_deltaxi_xa = np.sum(coeffmatrixxa * ((np.exp(gammaTimesCorrdNL)-1.0) - gammaTimesCorrdNL), axis = (1,2))
         self._III_deltaxi_xa *= np.array([coeffzp1xa]).T**2 #brings it to xa units
 
-        if (constants.FLAG_DO_DENS_NL): #no velocity contribution to density
+        if (User_Parameters.FLAG_DO_DENS_NL): #no velocity contribution to density
             D_coeffR1xa = coeffR1xa.reshape(*coeffR1xa.shape, 1)
             D_gammaR1 = gammaR1.reshape(*gammaR1.shape , 1)
             D_growthRmatrix = growthRmatrix[:,:1].reshape(*growthRmatrix[:,:1].shape, 1)
@@ -892,7 +892,7 @@ class Power_Spectra:
             deltaXiXaTxAddend = np.cumsum(deltaXiXaTxAddend[::-1], axis = 0)[::-1]
             self._III_deltaxi_xaTx[:, ir] = np.einsum('ii->i', deltaXiXaTxAddend, optimize = True)
 
-        if (constants.FLAG_DO_DENS_NL): #no velocity contribution to density
+        if (User_Parameters.FLAG_DO_DENS_NL): #no velocity contribution to density
             D_coeffR2Tx = coeffR2Tx.reshape(1, *coeffR2Tx.shape, 1)
             D_coeffzp2Tx = coeffzp2Tx.flatten().reshape(1, *coeffzp2Tx.flatten().shape, 1)
             D_gammaR2 = gammaR2.reshape(1, *gammaR2.shape , 1)
@@ -938,7 +938,7 @@ class Power_Spectra:
 
 
 # Below is the old get_all_corrs function for reference. It has some EoR bubbles functions that are incomplete (I think)
-#def get_all_corrs(self, Cosmo_Parameters, Correlations, T21_coefficients):
+#def get_all_corrs(self, User_Parameters, Cosmo_Parameters, Correlations, T21_coefficients):
 #    "Returns the correlation function of all observable at each z in zintegral"
 #
 #    #_iRnonlinear = np.arange(Cosmo_Parameters.indexminNL,Cosmo_Parameters.indexmaxNL)
@@ -992,7 +992,7 @@ class Power_Spectra:
 #
 #
 #
-#        if(constants.FLAG_DO_DENS_NL):
+#        if(User_Parameters.FLAG_DO_DENS_NL):
 #            self._deltaxi_dxa[izp1] = np.sum(coeffR1xa * ((np.exp(gammaR1 * growthRlist1[0] * corr_deltaR1R2z0[:,0])-1.0) - gammaR1 * growthRlist1[0] * corr_deltaR1R2z0[:,0]) , axis=(1))
 #            self._deltaxi_dxa[izp1] *= coeffzp1xa #brings it to xa units
 #            #for d-d autocorrelation only keep the most local term
@@ -1050,7 +1050,7 @@ class Power_Spectra:
 #
 #            self._deltaxi_xaTx[izp1] += coeffzp2Tx * np.sum(coeffmatrixxaTx * ((np.exp(gammamatrixR1R2 * corr_deltaR1R2z0)-1.0) - gammamatrixR1R2 * corr_deltaR1R2z0) , axis=(1,2))
 #
-#            if(constants.FLAG_DO_DENS_NL):
+#            if(User_Parameters.FLAG_DO_DENS_NL):
 #                self._deltaxi_dTx[izp1] += coeffzp2Tx * np.sum(coeffR2Tx * ((np.exp(gammaR2* growthRlist1[0] * corr_deltaR1R2z0[:,0])-1.0) - gammaR2* growthRlist1[0] * corr_deltaR1R2z0[:,0]) , axis=(1))
 #
 #            if(_flag_doEoRNL):
@@ -1060,7 +1060,7 @@ class Power_Spectra:
 #        self._deltaxi_xaTx[izp1]*= coeffzp1xa
 #        self._deltaxi_xaTx[izp1]*=_coeffTx_units[izp1]
 #
-#        if(constants.FLAG_DO_DENS_NL):
+#        if(User_Parameters.FLAG_DO_DENS_NL):
 #            self._deltaxi_dTx[izp1]*=_coeffTx_units[izp1]
 #
 #        if(_flag_doEoRNL):

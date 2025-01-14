@@ -15,11 +15,64 @@ import numpy as np
 from classy import Class
 from scipy.interpolate import interp1d
 
+class User_Parameters:
+    """
+    User parameters for Zeus21.
+
+    Calling the class without specifying any parameter will set them to their default values, but they can also be directly set when creating the class:
+
+    >>> zeus21.User_Parameters(precisionboost=0.5)
+
+    Parameters can also be changed afterwards:
+    >>> UserParams = zeus21.User_Parameters()
+    >>> UserParams.precisionboost = 0.5
+
+
+    Parameters
+    ----------
+    precisionboost: float
+        Make integrals take more points for boost in precision, the baseline being 1.0.
+    FLAG_FORCE_LINEAR_CF: int (0 or 1)
+        0 to do standard calculation, 1 to force linearization of correlation function.
+    MIN_R_NONLINEAR: float
+        Minimum radius R/cMpc in which we start doing the nonlinear calculation. 
+        Below ~1 it will blow up because sigma > 1 eventually, and our exp(\delta) approximation breaks. 
+        Check if you play with it and if you change Window().
+    MAX_R_NONLINEAR: float
+        Maximum radius R/cMpc in which we start doing the nonlinear calculation (above this it is very linear)
+    FLAG_DO_DENS_NL: bool
+        Whether to do the nonlinear (ie lognormal) calculation for the density field itself and its cross correlations. 
+        Small (<3%) correction in dd, but non trivial (~10%) in d-xa and d-Tx
+    FLAG_WF_ITERATIVE: bool
+        Whether to iteratively do the WF correction as in Hirata2006.
+
+    Attributes
+    ----------
+    C2_RENORMALIZATION_FLAG: int (0 or 1)
+        Whether to renormalize the C2 oefficients (appendix in 2302.08506).
+    """
+
+    def __init__(self, precisionboost = 1.0, FLAG_FORCE_LINEAR_CF = 0, 
+                 MIN_R_NONLINEAR = 2.0, MAX_R_NONLINEAR = 100.0,
+                 FLAG_DO_DENS_NL = False, FLAG_WF_ITERATIVE = True):
+        
+        self.precisionboost = precisionboost
+        self.FLAG_FORCE_LINEAR_CF = FLAG_FORCE_LINEAR_CF
+        self.C2_RENORMALIZATION_FLAG = 1 - FLAG_FORCE_LINEAR_CF
+
+        self.MIN_R_NONLINEAR = MIN_R_NONLINEAR
+        self.MAX_R_NONLINEAR = MAX_R_NONLINEAR
+
+        self.FLAG_DO_DENS_NL = FLAG_DO_DENS_NL
+
+        self.FLAG_WF_ITERATIVE = FLAG_WF_ITERATIVE
+
+
 
 class Cosmo_Parameters_Input:
     "Class to pass the 6 LCDM parameters as input"
 
-    def __init__(self, omegab= 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, 
+    def __init__(self, omegab = 0.0223828, omegac = 0.1201075, h_fid = 0.67810, As = 2.100549e-09, ns = 0.9660499, 
                  tau_fid = 0.05430842, kmax_CLASS = 500., zmax_CLASS = 50.,zmin_CLASS = 5., Flag_emulate_21cmfast = False, 
                  USE_RELATIVE_VELOCITIES = False, HMF_CHOICE= "ST"):
 
@@ -49,7 +102,7 @@ class Cosmo_Parameters_Input:
 class Cosmo_Parameters:
     "Class that will keep the cosmo parameters throughout"
 
-    def __init__(self, CosmoParams_input, ClassCosmo):
+    def __init__(self, UserParams, CosmoParams_input, ClassCosmo):
 
         self.omegab = CosmoParams_input.omegab
         self.omegac = CosmoParams_input.omegac
@@ -128,12 +181,12 @@ class Cosmo_Parameters:
             self.Rsmmin = 0.62*1.5 #same as minmum R in 21cmFAST for their standard 1.5 Mpc cell resolution. 0.62 is their 'L_FACTOR'
             self.Rsmmax = 500. #same as R_XLy_MAX in 21cmFAST. Too low?
             
-        self.NRs = np.floor(45*constants.precisionboost).astype(int)
+        self.NRs = np.floor(45*UserParams.precisionboost).astype(int)
         self._Rtabsmoo = np.logspace(np.log10(self.Rsmmin), np.log10(self.Rsmmax), self.NRs) # Smoothing Radii in Mpc com
         self._dlogRR = np.log(self.Rsmmax/self.Rsmmin)/(self.NRs-1.0)
 
-        self.indexminNL = (np.log(constants.MIN_R_NONLINEAR/self.Rsmmin)/self._dlogRR).astype(int)
-        self.indexmaxNL = (np.log(constants.MAX_R_NONLINEAR/self.Rsmmin)/self._dlogRR).astype(int) + 1 #to ensure it captures MAX_R
+        self.indexminNL = (np.log(UserParams.MIN_R_NONLINEAR/self.Rsmmin)/self._dlogRR).astype(int)
+        self.indexmaxNL = (np.log(UserParams.MAX_R_NONLINEAR/self.Rsmmin)/self._dlogRR).astype(int) + 1 #to ensure it captures MAX_R
 
 
         #HMF-related constants
@@ -160,7 +213,7 @@ class Cosmo_Parameters:
 class Astro_Parameters:
     "Class to pass the astro parameters as input"
 
-    def __init__(self, Cosmo_Parameters, 
+    def __init__(self, UserParams, Cosmo_Parameters, 
                     astromodel = 0,
                     accretion_model = 0,
 

@@ -16,25 +16,27 @@ import numpy as np
 
 from zeus21.xrays import *
 
+UserParams = zeus21.User_Parameters()
+
 CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10.) #to speed up
 ClassyCosmo = zeus21.runclass(CosmoParams_input)
-CosmoParams = zeus21.Cosmo_Parameters(CosmoParams_input, ClassyCosmo)
-AstroParams = zeus21.Astro_Parameters(CosmoParams)
+CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
+AstroParams = zeus21.Astro_Parameters(UserParams, CosmoParams)
 
-Xray_Class = Xray_class(CosmoParams) #initialize Xray class
+Xray_Class = Xray_class(UserParams, CosmoParams) #initialize Xray class
 Energylist = AstroParams.Energylist
 
 def test_xrays():
 
     z1=10.;
     z2=15.;
-    tau1 = Xray_Class.optical_depth(CosmoParams, Energylist,z1,z1)
+    tau1 = Xray_Class.optical_depth(UserParams, CosmoParams, Energylist,z1,z1)
     assert( (tau1 == np.zeros_like(tau1) ).all())
 
-    tau2 = Xray_Class.optical_depth(CosmoParams, Energylist,z1,z2)
+    tau2 = Xray_Class.optical_depth(UserParams, CosmoParams, Energylist,z1,z2)
     assert( (tau2 >= np.zeros_like(tau2) ).all())
 
-    opacity1 = Xray_Class.opacity_Xray(CosmoParams, Energylist,z1,z2)
+    opacity1 = Xray_Class.opacity_Xray(UserParams, CosmoParams, Energylist,z1,z2)
     assert( (np.zeros_like(opacity1) <= opacity1).all())
     assert( (opacity1<= np.ones_like(opacity1) ).all())
 
