@@ -116,7 +116,7 @@ class get_T21_coefficients:
         deltatab_norm = np.linspace(-Nsigmad,Nsigmad,Nds)
 
         #initialize Xrays
-        Xrays = Xray_class(Cosmo_Parameters)
+        Xrays = Xray_class(User_Parameters, Cosmo_Parameters)
         _Energylist = Astro_Parameters.Energylist
         Nzinttau = np.floor(10*User_Parameters.precisionboost).astype(int)
         

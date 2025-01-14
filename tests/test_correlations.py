@@ -23,7 +23,7 @@ CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS =
 ClassyCosmo = zeus21.runclass(CosmoParams_input)
 CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
 
-CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
+CorrFClass = zeus21.Correlations(UserParams, CosmoParams, ClassyCosmo)
 
 
 def test_corrfuncs():

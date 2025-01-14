@@ -25,21 +25,21 @@ HMFintclass = zeus21.HMF_interpolator(UserParams, CosmoParams,ClassyCosmo)
 
 
 
-AstroParams = zeus21.Astro_Parameters(CosmoParams)
-AstroParams_popIII = zeus21.Astro_Parameters(CosmoParams,USE_POPIII=True)
+AstroParams = zeus21.Astro_Parameters(UserParams,CosmoParams)
+AstroParams_popIII = zeus21.Astro_Parameters(UserParams,CosmoParams,USE_POPIII=True)
 ZMIN = 20.0 #down to which z we compute the evolution
-CorrFClass = zeus21.Correlations(CosmoParams, ClassyCosmo)
+CorrFClass = zeus21.Correlations(UserParams,CosmoParams, ClassyCosmo)
 Coeffs = zeus21.get_T21_coefficients(UserParams, CosmoParams, ClassyCosmo, AstroParams, HMFintclass, zmin=ZMIN)
 Coeffs_popIII = zeus21.get_T21_coefficients(UserParams, CosmoParams, ClassyCosmo, AstroParams_popIII, HMFintclass, zmin=ZMIN)
 
 #also for exponential accretion:
-AstroParams_expacc = zeus21.Astro_Parameters(CosmoParams, accretion_model=0)
+AstroParams_expacc = zeus21.Astro_Parameters(UserParams,CosmoParams, accretion_model=0)
 
 #and for the 21cmfast mode:
 CosmoParams_input_21cmfast = zeus21.Cosmo_Parameters_Input(Flag_emulate_21cmfast=True)
 ClassyCosmo_21cmfast = zeus21.runclass(CosmoParams_input_21cmfast)
 CosmoParams_21cmfast = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input_21cmfast, ClassyCosmo_21cmfast)
-AstroParams_21cmfast = zeus21.Astro_Parameters(CosmoParams_21cmfast, astromodel = 1)
+AstroParams_21cmfast = zeus21.Astro_Parameters(UserParams,CosmoParams_21cmfast, astromodel = 1)
 
 
 ztest = 20.

@@ -21,9 +21,9 @@ UserParams = zeus21.User_Parameters()
 CosmoParams_input = zeus21.Cosmo_Parameters_Input(kmax_CLASS = 10., zmax_CLASS = 10.) #to speed up
 ClassyCosmo = zeus21.runclass(CosmoParams_input)
 CosmoParams = zeus21.Cosmo_Parameters(UserParams, CosmoParams_input, ClassyCosmo)
-AstroParams = zeus21.Astro_Parameters(CosmoParams)
+AstroParams = zeus21.Astro_Parameters(UserParams, CosmoParams)
 
-Xray_Class = Xray_class(CosmoParams) #initialize Xray class
+Xray_Class = Xray_class(UserParams, CosmoParams) #initialize Xray class
 Energylist = AstroParams.Energylist
 
 def test_xrays():
