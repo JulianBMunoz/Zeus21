@@ -17,51 +17,14 @@ from pyfftw import empty_aligned as empty
 
 
 class CoevalMaps:
-    """
-    Class that calculates and keeps coeval maps, one z at a time.
-
-    >>> Mapz6 = zeus21.CoevalMaps(CoeffStructure, PS21, 6, KIND=0)
-    >>> T21map = Mapz11.T21map 
-
-
-    Parameters
-    ----------
-    T21_coefficients: Class
-        Class with the T21 coefficients, as calculated by the get_T21_coefficients class in sfrd.py.
-    Power_Spectrum: Class
-        Class with the power spectrum, as calculated by the Power_Spectra class in correlations.py.
-    z: float
-        Redshift at which to compute things -- it will latch on to closest z in T21_coefficients.
-    Lbox: float, optional
-        Size of the box in cMpc. Default is 600.
-    Nbox: int, optional 
-        Number of cells per side. Default is 200.
-    KIND: int, optional
-        Determines the kind of map you make. Default is None. Options are:
-        KIND = 0, only T21 lognormal. OK approximation
-        KIND = 1, density and T21 correlated. T21 has a gaussian and a lognormal component. Decent approximation
-        KIND = 2, all maps
-        KIND = 3, same as 2 but integrating over all R. Slow but most accurate
-    seed: int, optional
-        Seed for the random number generator (for reproducibility). Default is 1605.
-
-    Attributes
-    ----------
-    T21map: array
-        The T21 map (final product), in mK. Nbox^3
-    T21maplin: array
-        The linear T21 map, correlated with density,  in mK. Nbox^3
-    T21mapNL: array
-        The nonlinear contribution to T21 map, in mK. Nbox^3
-    deltamap: array
-        The density map. Nbox^3
-    T21global: float
-        The global mean T21, in mK.
-    z: float    
-        The redshift at which the map was calculated, can will be slightly different from z input.
-    """
+    "Class that calculates and keeps coeval maps, one z at a time."
 
     def __init__(self, T21_coefficients, Power_Spectrum, z, Lbox=600, Nbox=200, KIND=None, seed=1605):
+        'the KIND flag determines the kind of map you make. Options are:'
+        'KIND = 0, only T21 lognormal. OK approximation'
+        'KIND = 1, density and T21 correlated. T21 has a gaussian and a lognormal component. Decent approximation'
+        'KIND = 2, all maps'
+        'KIND = 3, same as 2 but integrating over all R. Slow but most accurate'
 
         zlist = T21_coefficients.zintegral 
         _iz = min(range(len(zlist)), key=lambda i: np.abs(zlist[i]-z)) #pick closest z
