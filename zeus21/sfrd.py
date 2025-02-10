@@ -547,31 +547,26 @@ class get_T21_coefficients:
         else:
             self._coeff_Ja_xa_0 = 8.0*np.pi*(constants.wavelengthLyA/1e7)**2 * constants.widthLyA * constants.Tstar_21/(9.0*constants.A10_21*self.T_CMB) #units of (cm^2 s Hz sr), convert from Ja to xa. should give 1.81e11/(1+self.zintegral) for Tcmb_0=2.725 K
 
+        self.coeff_Ja_xa = self._coeff_Ja_xa_0 * Salpha_exp(self.zintegral, self.Tk_avg, self.xe_avg)
+        self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
+        self.invTcol_avg = 1.0 / self.Tk_avg
+        self._invTs_avg = (1.0/self.T_CMB+self.xa_avg*self.invTcol_avg)/(1+self.xa_avg)
         if(User_Parameters.FLAG_WF_ITERATIVE==True): #iteratively find Tcolor and Ts. Could initialize one to zero, but this should converge faster
+            ### iteration routine to find Tcolor and Ts
             _invTs_tryfirst = 1.0/self.T_CMB
-            self._invTs_avg = 1.0/self.Tk_avg
-        else: #no correction (ie Tcolor=Tk, Salpha= exp(...))
-            self.invTcol_avg = 1.0 / self.Tk_avg
-            self.coeff_Ja_xa = self._coeff_Ja_xa_0 * Salpha_exp(self.zintegral, self.Tk_avg, self.xe_avg)
-            self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
-            self._invTs_avg = (1.0/self.T_CMB+self.xa_avg*self.invTcol_avg)/(1+self.xa_avg)
+            while(np.sum(np.fabs(_invTs_tryfirst/self._invTs_avg - 1.0))>0.01): #no more than 1% error total
+                _invTs_tryfirst = self._invTs_avg
 
-            _invTs_tryfirst = self._invTs_avg #so the loop below does not trigger
+                #update xalpha
+                _Salphatilde = (1.0 - 0.0632/self.Tk_avg + 0.116/self.Tk_avg**2 - 0.401/self.Tk_avg*self._invTs_avg + 0.336*self._invTs_avg/self.Tk_avg**2)/_factorxi
+                self.coeff_Ja_xa = self._coeff_Ja_xa_0 * _Salphatilde
+                self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
 
-        ### iteration routine to find Tcolor and Ts
-        while(np.sum(np.fabs(_invTs_tryfirst/self._invTs_avg - 1.0))>0.01): #no more than 1% error total
-            _invTs_tryfirst = self._invTs_avg
+                #and Tcolor^-1
+                self.invTcol_avg = 1.0/self.Tk_avg + constants.gcolorfactorHirata * 1.0/self.Tk_avg * (_invTs_tryfirst - 1.0/self.Tk_avg)
 
-            #update xalpha
-            _Salphatilde = (1.0 - 0.0632/self.Tk_avg + 0.116/self.Tk_avg**2 - 0.401/self.Tk_avg*self._invTs_avg + 0.336*self._invTs_avg/self.Tk_avg**2)/_factorxi
-            self.coeff_Ja_xa = self._coeff_Ja_xa_0 * _Salphatilde
-            self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
-
-            #and Tcolor^-1
-            self.invTcol_avg = 1.0/self.Tk_avg + constants.gcolorfactorHirata * 1.0/self.Tk_avg * (_invTs_tryfirst - 1.0/self.Tk_avg)
-
-            #and finally Ts^-1
-            self._invTs_avg = (1.0/self.T_CMB+self.xa_avg * self.invTcol_avg)/(1+self.xa_avg)
+                #and finally Ts^-1
+                self._invTs_avg = (1.0/self.T_CMB+self.xa_avg * self.invTcol_avg)/(1+self.xa_avg)
 
         
         
