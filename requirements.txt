@@ -5,3 +5,7 @@ sphinx
 myst_parser
 numexpr
 astropy
+tqdm
+matplotlib
+powerbox
+pyfftw
