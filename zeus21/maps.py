@@ -112,7 +112,7 @@ class CoevalMaps:
             print('ERROR, KIND not implemented yet!')
 
 
-def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, input_z, boxlength=300., ncells=300, seed=1234, r_precision=1., timer=True, logd = False, barrier = None, spherize=False):
+def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, input_z, boxlength=300., ncells=300, seed=1234, r_precision=1., timer=True, logd = False, barrier = None, spherize=False, FLAG_return_densities = 0):
     """
     Generates a 3D map of ionized fields and ionized fraction of hydrogen.
     
@@ -128,6 +128,8 @@ def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, i
         Sets up Class cosmology.
     CorrFClass: zeus21.Correlations class
         Calculates correlation functions.
+    BMF: zeus21.reionization class
+        Computes bubble mass functions and barriers.
     input_z: 1D np.array
         The redshifts at which to compute output maps. Narrowed down later to select available redshifts from CoeffStructure.zintegral.
     boxlength: float
@@ -146,6 +148,11 @@ def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, i
         Input density barrier to be used as the threshold for map generation. Takes z index //\\Change//\\ (relative to CoeffStructure.zintegral) as input and returns np.array of shape of radii. Default is None.
     spherize: bool
         Whether to flag spheres around ionized cells (True) instead of only central pixel flagging (False). Default is False. Central pixel flagging is generally more consistent with the bubble mass function than spherizing.
+    FLAG_return_densities: int
+        Options: (0, 1, 2). Default is 0.
+            0: returns only the ionized fields and ionized fractions.
+            1: returns only the ionized fields, ionized fractions, and density field at the last redshift.
+            2: returns the ionized fields, ionized fractions, density field at the last redshift, and the smoothed density fields at each scale at the last redshift.
 
     Outputs
     ----------
@@ -153,6 +160,12 @@ def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, i
         Resultant 3D ionized field maps at each redshift. The first dimension is redshifts, and the three other dimensions are spatial.
     ion_frac: 1D np.array
         Ionized fraction at each redshift in ion_fields.
+    Optional:
+        density_field: 3D np.array
+            The field of densities at the last redshift.
+        smoothed_density_fields: 4D np.array
+            The field of densities at the last redshift, smoothed over each radius scale. The first dimension is the smoothing scales, the other three are spatial.
+    
     """
     
     #Measure time elapsed from start
@@ -218,22 +231,33 @@ def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, i
     print('\nTotal time:')
     z21_utilities.print_timer(start_time)
 
-    return ion_fields, ion_frac
+    if FLAG_return_densities == 0:
+        return ion_fields, ion_frac
+
+    elif FLAG_return_densities == 1:
+        return ion_fields, ion_frac, density_field
+
+    elif FLAG_return_densities == 2:
+        return ion_fields, ion_frac, density_field, smooth_density_fields
+
+    else:
+        print('WARNING: FLAG_return_densities is not set to (0, 1, or 2). Defaulting to 0.')
+        return ion_fields, ion_frac
 
 #look over this again
 def ionize(CosmoParams, zlist, Rs, curr_z_idx, smooth_density_fields, barrier, r_idx, klist3Dfft, spherize):
     Dg0 = CosmoParams.growthint(zlist[0])
     Dg = CosmoParams.growthint(zlist[curr_z_idx])
     if not spherize:
-        ion_field = np.any(smooth_density_fields > (Dg0/Dg)*barrier(curr_z_idx)[r_idx][:, None, None, None], axis=0)
+        ion_field = np.any(smooth_density_fields > (Dg0/Dg)*barrier[curr_z_idx, r_idx][:, None, None, None], axis=0)
     else:
         ion_field_Rs = []
         for j in range(len(r_idx)):
             curr_R = r_idx[j]
-            ion_field_oneR = smooth_density_fields[j] > (Dg0/Dg)*barrier(curr_z_idx)[curr_R]
+            ion_field_oneR = smooth_density_fields[j] > (Dg0/Dg)*barrier[curr_z_idx, curr_R]
             ionk = np.fft.fftn(ion_field_oneR)
-            cutoff = 1/(4/3*np.pi*Rs[curr_R]**3)/2*(1+barrier(curr_z_idx)[curr_R]) #comment
-            ion_spheres = z21_utilities.tophat_smooth(Rs[curr_R]/(1+barrier(curr_z_idx)[curr_R])**(1/3), klist3Dfft, ionk) > cutoff
+            cutoff = 1/(4/3*np.pi*Rs[curr_R]**3)/2*(1+barrier[curr_z_idx, curr_R]) #comment
+            ion_spheres = z21_utilities.tophat_smooth(Rs[curr_R]/(1+barrier[curr_z_idx, curr_R])**(1/3), klist3Dfft, ionk) > cutoff
             ion_field_Rs.append(ion_spheres)
                 
         ion_field = np.any(ion_field_Rs, axis=0)
