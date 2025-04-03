@@ -24,7 +24,7 @@ class BMF:
     
     """
     
-    def __init__(self, UserParams, CoeffStructure, HMFintclass, CosmoParams, AstroParams, R_linear_sigma_fit_input=10, FLAG_converge=True, max_iter=10, ZMAX_REION = 30):
+    def __init__(self, CoeffStructure, HMFintclass, CosmoParams, AstroParams, R_linear_sigma_fit_input=10, FLAG_converge=True, max_iter=10, ZMAX_REION = 30):
 
         self.ZMAX_REION = ZMAX_REION #max redshift up to which we calculate reionization observables
         self.zlist = CoeffStructure.zintegral
@@ -36,7 +36,6 @@ class BMF:
         self.sigma = CoeffStructure.sigmaofRtab
 
         self.Hz = cosmology.Hubinvyr(CosmoParams, self.zlist)
-        #self.Hzconv = (u.km/u.s/u.Mpc).to(1/u.yr) #multiply this times Hubble parameter to convert from km/s/Mpc to 1/yr
         self.trec0 = 1/(constants.alphaB * cosmology.n_H(CosmoParams,0) * AstroParams._clumping) #seconds
         self.trec = self.trec0/(1+self.zlist)**3/constants.yrTos #years
         self.niondot_avg = CoeffStructure.niondot_avg_II
@@ -47,7 +46,7 @@ class BMF:
 
         zr_mesh = np.meshgrid(np.arange(len(self.Rs)), np.arange(len(self.zlist)))
         self.nion_norm = self.nion_normalization(zr_mesh[1], zr_mesh[0])
-        self.barrier = self.compute_barrier(self.ion_frac)
+        self.barrier = self.compute_barrier(CosmoParams, self.ion_frac)
         self.barrier_initial = np.copy(self.barrier)
 
         self.R_linear_sigma_fit_idx = z21_utilities.find_nearest_idx(self.Rs, R_linear_sigma_fit_input)
@@ -56,14 +55,15 @@ class BMF:
         self.BMF = np.array([self.VRdn_dR(HMFintclass, np.arange(len(self.Rs)), i) for i in range(len(self.zlist))]) #initial bubble mass function
         self.BMF_initial = np.copy(self.BMF)
         self.ion_frac = np.nan_to_num([np.trapz(self.BMF[i], np.log(self.Rs)) for i in range(len(self.zlist))]) #ion_frac by integrating the BMF
-
+        self.ion_frac[self.barrier[:, -1]<=0] = 1
+        
         if FLAG_converge:
-            self.converge_BMF(HMFintclass, self.ion_frac, max_iter=max_iter)
+            self.converge_BMF(CosmoParams, HMFintclass, self.ion_frac, max_iter=max_iter)
         #two functions: compute BMF and iterate
         
 
 
-    def compute_barrier(self, ion_frac):
+    def compute_barrier(self, CosmoParams, ion_frac):
         """
         Computes the density barrier threshold for ionization.
         
@@ -71,6 +71,8 @@ class BMF:
 
         Parameters
         ----------
+        CosmoParams: zeus21.Cosmo_Parameters class
+            Stores cosmology.
         ion_frac: 1D np.array
             The ionized fractions to be used to compute the number of recombinations. 
 
@@ -80,21 +82,20 @@ class BMF:
             The resultant density threshold array. First dimension is each redshift, second dimension is each radius scale.
         """
         barrier = np.zeros((len(self.zlist), len(self.Rs)))
-        ds_array = np.linspace(-1, 2, 21)
-       
+        ds_array = np.linspace(-1, 5, 101)
         
         for ir in range(len(self.Rs)):
             #Compute nion_values and nrec_values for this 'ir'
-            nion_values = self.nion_delta_r_int(ds_array, ir)  #Shape (nd, nz)
-            nrec_values = self.nrec(ds_array, ion_frac)             #Shape (nd, nz)
+            nion_values = self.nion_delta_r_int(CosmoParams, ds_array, ir)  #Shape (nd, nz)
+            nrec_values = self.nrec(CosmoParams, ds_array, ion_frac)             #Shape (nd, nz)
         
-            total_values = np.log10(nion_values / (1 + nrec_values))   #taking difference in logspace to find zero-crossing 
+            total_values = np.log10(nion_values / (1 + nrec_values) + 1e-10)   #taking difference in logspace to find zero-crossing 
         
             #Loop over redshift indices
             for i in range(len(self.zlist)):
                 y_values = total_values[:, i]  #Shape (nd,)
         
-                # Find zero crossings
+                #Find zero crossings
                 sign_change = np.diff(np.sign(y_values))
                 idx = np.where(sign_change)[0]
                 if idx.size > 0:
@@ -107,22 +108,22 @@ class BMF:
                     barrier[i, ir] = x_intersect[0]  #Assuming we take the first crossing
                 else:
                     barrier[i, ir] = np.nan #Never crosses
-
+        barrier = barrier * (CosmoParams.growthint(self.zlist)/CosmoParams.growthint(self.zlist[0]))[:, np.newaxis] #scale barrier with growth factor
         barrier[self.zlist > self.ZMAX_REION] = 100 #sets density to an unreachable barrier, as if reionization isn't happening
         return barrier
-
-
 
     #normalizing the nion/sfrd model
     def nion_normalization(self, z, R):
         return 1/np.sqrt(1-2*self.gamma2[z, R]*self.sigma[z, R]**2)*np.exp(self.gamma[z, R]**2 * self.sigma[z, R]**2 / (2-4*self.gamma2[z, R]*self.sigma[z, R]**2))
 
-    def nrec(self, d_array, ion_frac):
+    def nrec(self, CosmoParams, d_array, ion_frac):
         """
         Vectorized computation of nrec over an array of overdensities d_array.
 
         Parameters
         ----------
+        CosmoParams: zeus21.Cosmo_Parameters class
+            Stores cosmology.
         d_array: 1D np.array
             A list of sample overdensity values to evaluate nrec over.
         ion_frac: 1D np.array
@@ -142,21 +143,23 @@ class BMF:
     
         denom = -1 / (1 + z_rev) / Hz_rev / trec_rev
         integrand_base = denom * ion_frac_rev 
-    
-        # Broadcast over d_array
-        integrand = integrand_base[np.newaxis, :] * (1 + d_array[:, np.newaxis])
-        cumulative_integral = np.concatenate(
-            (np.zeros((len(d_array), 1)), cumulative_trapezoid(integrand, x=z_rev, axis=1)), axis=1
-        )
-        nrecs = cumulative_integral[:, ::-1]  # Reverse to match self.zlist order
+        Dg = CosmoParams.growthint(z_rev) #growth factor
+
+        nrecs = cumulative_trapezoid(integrand_base*(1+d_array[:, np.newaxis]*Dg/Dg[-1]), x=z_rev, initial=0) #(1+delta) rather than (1+delta)^2 because nrec and nion are per hydrogen atom 
+        
+        #TODO: nonlinear recombinations/higher order
+
+        nrecs = nrecs[:, ::-1]  # Reverse to match self.zlist order
         return nrecs
     
-    def niondot_delta_r(self, d_array, ir):
+    def niondot_delta_r(self, CosmoParams, d_array, ir):
         """
         Compute niondot over an array of overdensities d_array for a given ir.
 
         Parameters
         ----------
+        CosmoParams: zeus21.Cosmo_Parameters class
+            Stores cosmology.
         d_array: 1D np.array
             A list of sample overdensity values to evaluate niondot over.
         ir: int
@@ -168,7 +171,7 @@ class BMF:
             The rates of ionizing photon production. The first dimension is densities, the second dimension is redshifts.
         """
         
-        d_array = d_array[:, np.newaxis]
+        d_array = d_array[:, np.newaxis] * CosmoParams.growthint(self.zlist)[np.newaxis, :] / CosmoParams.growthint(self.zlist[0])
     
         gamma_ir = self.gamma[:, ir]   
         gamma2_ir = self.gamma2[:, ir]  
@@ -179,12 +182,14 @@ class BMF:
         
         return niondot
     
-    def nion_delta_r_int(self, d_array, ir):
+    def nion_delta_r_int(self, CosmoParams, d_array, ir):
         """
         Vectorized computation of nion over an array of overdensities d_array for a given ir.
 
         Parameters
         ----------
+        CosmoParams: zeus21.Cosmo_Parameters class
+            Stores cosmology.
         d_array: 1D np.array
             A list of sample overdensity values to evaluate niondot over.
         ir: int
@@ -200,13 +205,14 @@ class BMF:
         z_rev = self.zlist[::-1]
         Hz_rev = self.Hz[::-1]
     
-        niondot_values = self.niondot_delta_r(d_array, ir)
+        niondot_values = self.niondot_delta_r(CosmoParams, d_array, ir)
     
         integrand = -1 / (1 + z_rev) / Hz_rev * niondot_values[:, ::-1]
-        cumulative_integral = np.concatenate(
-            (np.zeros((len(d_array), 1)), cumulative_trapezoid(integrand, x=z_rev, axis=1)), axis=1
-        )
-        nion = cumulative_integral[:, ::-1]  # Reverse back to match self.zlist order
+        #cumulative_integral = np.concatenate(
+        #    (np.zeros((len(d_array), 1)), cumulative_trapezoid(integrand, x=z_rev, axis=1)), axis=1
+        #)
+        nion = cumulative_trapezoid(integrand, x=z_rev, initial=0)[:, ::-1] #reverse back to match self.zlist order
+        #nion = cumulative_integral[:, ::-1]  # Reverse back to match self.zlist order
         return nion
 
     #calculating ionized fraction, put outside the class
@@ -261,19 +267,18 @@ class BMF:
         z = self.zlist[iz]
         return self.VRdn_dR(HMFintclass, ir, iz)*3/(4*np.pi*R**3)
 
-    def converge_BMF(self, HMFintclass, ion_frac_input, max_iter):
+    def converge_BMF(self, CosmoParams, HMFintclass, ion_frac_input, max_iter):
         self.ion_frac = ion_frac_input
         for j in trange(max_iter):
             ion_frac_prev = np.copy(self.ion_frac)
             
-            self.barrier = self.compute_barrier(self.ion_frac)
+            self.barrier = self.compute_barrier(CosmoParams, self.ion_frac)
             self.BMF = np.array([self.VRdn_dR(HMFintclass, np.arange(len(self.Rs)), i) for i in range(len(self.zlist))])
             self.ion_frac = np.nan_to_num([np.trapz(self.BMF[i], np.log(self.Rs)) for i in range(len(self.zlist))])
+            self.ion_frac[self.barrier[:, -1]<=0] = 1
 
             if np.allclose(ion_frac_prev, self.ion_frac):
                 print(f'SUCCESS: BMF converged in {j} iterations.')
                 return 
             
         print(f"WARNING: BMF didn't converge within {max_iter} iterations.")
-            
-        

@@ -114,7 +114,7 @@ class get_T21_coefficients:
 
         #and EPS factors
         Nsigmad = 1.0 #how many sigmas we explore
-        Nds = 3 #how many deltas
+        Nds = 3 #how many deltas; must be an odd integer
         deltatab_norm = np.linspace(-Nsigmad,Nsigmad,Nds)
 
         #initialize Xrays

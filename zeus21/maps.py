@@ -112,9 +112,9 @@ class CoevalMaps:
             print('ERROR, KIND not implemented yet!')
 
 
-def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, input_z, boxlength=300., ncells=300, seed=1234, r_precision=1., timer=True, logd = False, barrier = None, spherize=False, FLAG_return_densities = 0):
+class reionization_maps:
     """
-    Generates a 3D map of ionized fields and ionized fraction of hydrogen.
+    Generates 3D maps of the reionization fields.
     
     Uses a density threshold barrier determined from a converged bubble mass function. With default parameters, the code takes about 20 minutes on laptop to run.
 
@@ -132,7 +132,7 @@ def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, i
         Computes bubble mass functions and barriers.
     input_z: 1D np.array
         The redshifts at which to compute output maps. Narrowed down later to select available redshifts from CoeffStructure.zintegral.
-    boxlength: float
+    input_boxlength: float
         Comoving physical side length of the box. Default is 300 cMpc.
     ncells: int
         Number of cells on a side. Default is 300 cells.
@@ -140,125 +140,207 @@ def make_ion_fields(CosmoParams, CoeffStructure, ClassyCosmo, CorrFClass, BMF, i
         Sets the predetermined generation of maps. Default is 1234.
     r_precision: float
         Allows to change the steps of the radii for faster computation. Default (and max) is 1, lower values make the computation faster at the cost of accuracy.
-    timer: bool
-        Whether to print the time elapsed along the process. Default is True.
-    logd: bool
-        Whether to use lognormal (True) or Gaussian (False) density fields. Default is False.
     barrier: function
-        Input density barrier to be used as the threshold for map generation. Takes z index //\\Change//\\ (relative to CoeffStructure.zintegral) as input and returns np.array of shape of radii. Default is None.
-    spherize: bool
-        Whether to flag spheres around ionized cells (True) instead of only central pixel flagging (False). Default is False. Central pixel flagging is generally more consistent with the bubble mass function than spherizing.
-    FLAG_return_densities: int
-        Options: (0, 1, 2). Default is 0.
-            0: returns only the ionized fields and ionized fractions.
-            1: returns only the ionized fields, ionized fractions, and density field at the last redshift.
-            2: returns the ionized fields, ionized fractions, density field at the last redshift, and the smoothed density fields at each scale at the last redshift.
+        Input density barrier to be used as the threshold for map generation. Takes z index //\\Change//\\ (relative to CoeffStructure.zintegral) as input and returns np.array of shape. Default is None.
+    PRINT_TIMER: bool
+        Whether to print the time elapsed along the process. Default is True.
+    LOGNORMAL_DENSITY: bool
+        Whether to use lognormal (True) or Gaussian (False) density fields. Default is False.of radii. Default is False.
+    COMPUTE_DENSITY_AT_ALLZ: bool
+        Whether to output the density field at all redshifts. If False, only the density at the lower input redshift is computed. If True, the computation time and memory usage dramatically increases. Default is False.
+    SPHERIZE: bool
+        Whether to flag spheres around ionized cells (True) instead of only central pixel flagging (False). Default is False. Central pixel flagging is generally more consistent with the bubble mass function than spherizing. Default is False.
+    COMPUTE_MASSWEIGHTED_IONFRAC: bool
+        Whether to compute the mass weighted ionized fraction. If True, COMPUTE_DENSITY_AT_ALLZ will be forced to True, thus increasing dramatically computation time. Default is False.
+    lowres_massweighting: int
+        Compute the mass-weighted ionized fraction more efficiently by using lower resolution density and ionized fields. Has to be >=1 and an integer. Default is 1.
 
-    Outputs
+    Attributes
     ----------
-    ion_fields: 4D np.array
-        Resultant 3D ionized field maps at each redshift. The first dimension is redshifts, and the three other dimensions are spatial.
+    dx: float
+        Cell resolution of a side of the boxes.
+    z: 1D np.array
+        Redshifts at which the output maps are computed. Selected to be the closest to the input redshifts from the available ones in zeus21.
+    r: 1D np.array
+        Radii at which the density field is smoothed. Selected using r_precision from the available ones in zeus21.
+    z_of_density: float
+        Redshift at which the density is computed.
+    density: 3D np.array
+        Overdensity field at the lowest redshift asked by the user.
+    density_allz: 4D np.array
+        Overdensity field at all the redshifts asked by the user. First dimension correponds to redshifts. Only computed if COMPUTE_DENSITY_AT_ALLZ is True.
+    ion_field_allz: 4D np.array
+        Ionized fraction field at all the redshifts asked by the user. First dimension correponds to redshifts.
     ion_frac: 1D np.array
-        Ionized fraction at each redshift in ion_fields.
-    Optional:
-        density_field: 3D np.array
-            The field of densities at the last redshift.
-        smoothed_density_fields: 4D np.array
-            The field of densities at the last redshift, smoothed over each radius scale. The first dimension is the smoothing scales, the other three are spatial.
-    
+        Volume weighted ionized fraction at all the redshifts asked by the user.
+    ion_frac_massweighted: 1D np.array
+        Mass weighted ionized fraction at all the redshifts asked by the user. Only computed if COMPUTE_MASSWEIGHTED_IONFRAC is True.
     """
     
-    #Measure time elapsed from start
-    start_time = time.time()
+    def __init__(self, CosmoParams, ClassyCosmo, CorrFClass, CoeffStructure, BMF, input_z, 
+                 input_boxlength=300., ncells=300, seed=1234, r_precision=1., barrier=None, 
+                 PRINT_TIMER=True, ENFORCE_BMF_SCALE=True, 
+                 LOGNORMAL_DENSITY=False, COMPUTE_DENSITY_AT_ALLZ=False, SPHERIZE=False, 
+                 COMPUTE_MASSWEIGHTED_IONFRAC=False, lowres_massweighting=1):
+        #Measure time elapsed from start
+        self._start_time = time.time()
+        
+        ### boxes parameters
+        self.input_z = input_z
+        self.ENFORCE_BMF_SCALE = ENFORCE_BMF_SCALE
+        self.ncells = ncells
+        self.boxlength = input_boxlength
+        self.dx = self.boxlength/self.ncells
+        if self.ENFORCE_BMF_SCALE:
+            self.dx = CoeffStructure.Rtabsmoo[0] * (4*np.pi/3)**(1/3) #change to constant
+            self.boxlength = self.dx * self.ncells
+            print(f"WARNING: with ENFORCE_BMF_SCALE=True, boxlength is changed to match BMF scale. Current value: {self.boxlength:.2f} cMpc.")
+        self.seed = seed
+
+        ### FLAGS
+        self.PRINT_TIMER = PRINT_TIMER
+        self.LOGNORMAL_DENSITY = LOGNORMAL_DENSITY
+        self.COMPUTE_DENSITY_AT_ALLZ = COMPUTE_DENSITY_AT_ALLZ
+        self.SPHERIZE = SPHERIZE
+        self.COMPUTE_MASSWEIGHTED_IONFRAC = COMPUTE_MASSWEIGHTED_IONFRAC
+        if self.COMPUTE_MASSWEIGHTED_IONFRAC:
+            self.COMPUTE_DENSITY_AT_ALLZ = True
+
+        ### selecting redshifts and radii from available redshifts
+        # redshifts
+        self._z_idx = z21_utilities.find_nearest_idx(CoeffStructure.zintegral, self.input_z)
+        self.z = CoeffStructure.zintegral[self._z_idx]
+        # radii
+        self.r_precision = r_precision
+        self._r_idx = np.linspace(0, len(CoeffStructure.Rtabsmoo)-1, int(len(CoeffStructure.Rtabsmoo)*self.r_precision), dtype=int)
+        self.r = CoeffStructure.Rtabsmoo[self._r_idx]
+
+        ### generating the density field at the closest redshift to the lower one inputed
+        self.z_of_density = self.z[0]
+        self.density = self.generate_density(ClassyCosmo, CorrFClass)
+        self.density_allz = np.empty((len(self.z), self.ncells, self.ncells, self.ncells))
+        if self.COMPUTE_DENSITY_AT_ALLZ:
+            self.generate_density_allz(CosmoParams)
+
+        ### smoothing the density field
+        self._k = self.compute_k()
+        self.density_smoothed_allr = self.smooth_density()
+
+        ### generating the ionized field, and computing the ionized fraction
+        self.barrier = barrier
+        if self.barrier is None:
+            self.barrier = BMF.barrier
+        self.ion_field_allz, self.ion_frac = self.generate_xHII(CosmoParams, CoeffStructure, BMF)
+
+        ### computing the mass weighted ionized fraction
+        self.lowres_massweighting = lowres_massweighting
+        self.ion_frac_massweighted = np.empty(len(self.z))
+        if self.COMPUTE_MASSWEIGHTED_IONFRAC:
+            self.compute_massweighted_xHII(CosmoParams, self.lowres_massweighting)
+        
+        if self.PRINT_TIMER:
+            print_timer(self._start_time, text_before="Total computation time: ")
+        
+
+    def generate_density(self, ClassyCosmo, CorrFClass):
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print("Generating density field...")
+        #Generating matter power spectrum at the lowest redshift
+        klist = CorrFClass._klistCF
+        pk_matter = np.zeros_like(klist)
+        for i, k in enumerate(klist):
+            pk_matter[i] = ClassyCosmo.pk(k, self.z_of_density)
+        pk_spl = spline(np.log(klist), np.log(pk_matter))
     
-    if timer:
-        z21_utilities.print_timer(start_time, 'Making density field...')
+        #generating density map
+        if self.LOGNORMAL_DENSITY:
+            pb = pbox.LogNormalPowerBox(N=self.ncells, dim=3, pk=(lambda k: np.exp(pk_spl(np.log(k)))), boxlength=self.boxlength, seed=self.seed)
+        else:
+            pb = pbox.PowerBox(N=self.ncells, dim=3, pk=(lambda k: np.exp(pk_spl(np.log(k)))), boxlength=self.boxlength, seed=self.seed)
+        density_field = pb.delta_x()
+        if self.PRINT_TIMER:
+            print_timer(start_time, text_before="    done in ")
+        return density_field
 
-    #selecting redshifts and radii from available redshifts
-    zlist = CoeffStructure.zintegral
-    z_idx = z21_utilities.find_nearest_idx(zlist, input_z)
-    z = zlist[z_idx]
+    def generate_density_allz(self, CosmoParams):
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print('Evolving density field...')
+        Dg = CosmoParams.growthint(self.z)
+        growthfactor_ratio = (Dg/Dg[0])[:, np.newaxis, np.newaxis, np.newaxis]
+        density_lastz = np.copy(self.density)
+        self.density_allz = density_lastz[np.newaxis]*growthfactor_ratio
+        if self.PRINT_TIMER:
+            print_timer(start_time, text_before="    done in ")
+        return self.density_allz
 
-    Rs = CoeffStructure.Rtabsmoo
-    r_idx = np.linspace(0,len(Rs)-1,int(len(Rs)*r_precision),dtype=int)
-    r = Rs[r_idx]
-    dx = boxlength/ncells
+    def compute_k(self):
+        klistfftx = np.fft.fftfreq(self.ncells,self.dx)*2*np.pi
+        k = np.sqrt(np.sum(np.meshgrid(klistfftx**2, klistfftx**2, klistfftx**2, indexing='ij'), axis=0))
+        return k
 
-    #Generating matter power spectrum at z=5
-    klist = CorrFClass._klistCF
-    pk_matter = np.zeros_like(klist)
-    for i, k in enumerate(klist):
-        pk_matter[i] = ClassyCosmo.pk(k, z[0])
-    pk_spl = spline(np.log(klist), np.log(pk_matter))
+    def smooth_density(self):
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print("Smoothing density field...")
+        density_fft = np.fft.fftn(self.density)
+        density_smoothed_allr = np.array([z21_utilities.tophat_smooth(rr, self._k, density_fft) for rr in self.r])
+        if self.PRINT_TIMER:
+            print_timer(start_time, text_before="    done in ")
+        return density_smoothed_allr
 
-    #generating density map
-    if logd:
-        pb = pbox.LogNormalPowerBox(N=ncells, dim=3, pk=(lambda k: np.exp(pk_spl(np.log(k)))), boxlength=boxlength, seed=seed)
-    else:
-        pb = pbox.PowerBox(N=ncells, dim=3, pk=(lambda k: np.exp(pk_spl(np.log(k)))), boxlength=boxlength, seed=seed)
-    density_field = pb.delta_x()
+    def generate_xHII(self, CosmoParams, CoeffStructure, BMF):
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print("Generating ionized field...")
+        ion_field_allz = np.zeros((len(self.z),self.ncells,self.ncells,self.ncells))
+        ion_frac = np.zeros(len(self.z))
+        for i in trange(len(self.z)):
+            curr_z_idx = self._z_idx[i]
+            ion_field = self.ionize(CosmoParams, CoeffStructure, curr_z_idx)
+            ion_field_allz[i] = ion_field
+            ion_frac[i] = np.sum(ion_field)/(self.ncells**3)
+        if self.PRINT_TIMER:
+            print_timer(start_time, text_before="    done in ")
+        return ion_field_allz, ion_frac
 
-    if timer:
-        z21_utilities.print_timer(start_time, 'Creating smoothing function...')
-
-    #comment
-    klistfftx = np.fft.fftfreq(density_field.shape[0],dx)*2*np.pi
-    klist3Dfft = np.sqrt(np.sum(np.meshgrid(klistfftx**2, klistfftx**2, klistfftx**2, indexing='ij'), axis=0))
-    density_fft = np.fft.fftn(density_field)
-
-    if timer:
-        z21_utilities.print_timer(start_time, 'Smoothing...')
-
-    #comment
-    smooth_density_fields = np.array([z21_utilities.tophat_smooth(rr, klist3Dfft, density_fft) for rr in r])
-
-    if timer:
-        z21_utilities.print_timer(start_time, 'Creating ionized field...')
-
-    if barrier is None:
-        barrier = BMF.barrier
-    ion_fields = []
-    ion_frac = np.zeros(len(z))
-    for i in trange(len(z)):
-        curr_z_idx = z_idx[i]
-        ion_field = ionize(CosmoParams, zlist, Rs, curr_z_idx, smooth_density_fields, barrier, r_idx, klist3Dfft, spherize)
-        ion_fields.append(ion_field)
-        ion_frac[i] = np.sum(ion_field)/ncells**3
+    def ionize(self,CosmoParams, CoeffStructure, curr_z_idx):
+        zlist = CoeffStructure.zintegral
+        Rs = CoeffStructure.Rtabsmoo
+        
+        Dg0 = CosmoParams.growthint(zlist[0])
+        Dg = CosmoParams.growthint(zlist[curr_z_idx])
+        if not self.SPHERIZE:
+            ion_field = np.any(self.density_smoothed_allr > (Dg0/Dg)*self.barrier[curr_z_idx, self._r_idx][:, None, None, None], axis=0)
+        else:
+            ion_field_Rs = np.zeros((len(self._r_idx),self.ncells,self.ncells,self.ncells))
+            for j in range(len(self._r_idx)):
+                curr_R = self._r_idx[j]
+                ion_field_oneR = self.density_smoothed_allr[j] > (Dg0/Dg)*self.barrier[curr_z_idx, curr_R]
+                ion_field_oneR_fft = np.fft.fftn(ion_field_oneR)
+                cutoff = 1/(4/3*np.pi*Rs[curr_R]**3)/2*(1+self.barrier[curr_z_idx, curr_R]) #comment
+                ion_spheres = z21_utilities.tophat_smooth(Rs[curr_R]/(1+self.barrier[curr_z_idx, curr_R])**(1/3), self._k, ion_field_oneR_fft) > cutoff
+                ion_field_Rs[j] = ion_spheres
+                    
+            ion_field = np.any(ion_field_Rs, axis=0)
+        return ion_field
     
-    ion_fields = np.array(ion_fields)
+    def compute_massweighted_xHII(self, CosmoParams, lowres_massweighting=1):
+        if np.sum(self.density_allz[0, 0, 0]) == 0.:
+            self.generate_density_allz(CosmoParams)
+        self.lowres_massweighting = lowres_massweighting
+        if self.lowres_massweighting < 1:
+            raise Exeption('lowres_massweighting should be >=1.')
+        if not isinstance(self.lowres_massweighting, (int, np.int32, np.int64)):
+            raise Exeption('lowres_massweighting should be an integer.')
+        d_allz = self.density_allz[:, ::self.lowres_massweighting, ::self.lowres_massweighting, ::self.lowres_massweighting]
+        ion_allz = self.ion_field_allz[:, ::self.lowres_massweighting, ::self.lowres_massweighting, ::self.lowres_massweighting]
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print("Computing mass weighted ionized fraction...")
+        self.ion_frac_massweighted = np.average((1+d_allz) * ion_allz, axis=(1, 2, 3))
+        if self.PRINT_TIMER:
+            print_timer(start_time, text_before="    done in ")
+        return self.ion_frac_massweighted
 
-    print('Done!')
-    print('\nTotal time:')
-    z21_utilities.print_timer(start_time)
-
-    if FLAG_return_densities == 0:
-        return ion_fields, ion_frac
-
-    elif FLAG_return_densities == 1:
-        return ion_fields, ion_frac, density_field
-
-    elif FLAG_return_densities == 2:
-        return ion_fields, ion_frac, density_field, smooth_density_fields
-
-    else:
-        print('WARNING: FLAG_return_densities is not set to (0, 1, or 2). Defaulting to 0.')
-        return ion_fields, ion_frac
-
-#look over this again
-def ionize(CosmoParams, zlist, Rs, curr_z_idx, smooth_density_fields, barrier, r_idx, klist3Dfft, spherize):
-    Dg0 = CosmoParams.growthint(zlist[0])
-    Dg = CosmoParams.growthint(zlist[curr_z_idx])
-    if not spherize:
-        ion_field = np.any(smooth_density_fields > (Dg0/Dg)*barrier[curr_z_idx, r_idx][:, None, None, None], axis=0)
-    else:
-        ion_field_Rs = []
-        for j in range(len(r_idx)):
-            curr_R = r_idx[j]
-            ion_field_oneR = smooth_density_fields[j] > (Dg0/Dg)*barrier[curr_z_idx, curr_R]
-            ionk = np.fft.fftn(ion_field_oneR)
-            cutoff = 1/(4/3*np.pi*Rs[curr_R]**3)/2*(1+barrier[curr_z_idx, curr_R]) #comment
-            ion_spheres = z21_utilities.tophat_smooth(Rs[curr_R]/(1+barrier[curr_z_idx, curr_R])**(1/3), klist3Dfft, ionk) > cutoff
-            ion_field_Rs.append(ion_spheres)
-                
-        ion_field = np.any(ion_field_Rs, axis=0)
-    return ion_field

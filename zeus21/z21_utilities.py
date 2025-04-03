@@ -37,12 +37,11 @@ def find_nearest_idx(array, values):
         idx.append((np.abs(array - values[i])).argmin())
     return np.unique(idx)
 
-def print_timer(start_time, text=""):
+def print_timer(start_time, text_before="", text_after=""):
     elapsed_time = time.time() - start_time
     mins = int(elapsed_time//60)
     secs = int(elapsed_time - mins*60)
-    print(f"\n{mins}min {secs}s\n")
-    print(text)
+    print(f"{text_before}{mins}min {secs}s{text_after}")
 
 def v2r(v):
     return (3/4/np.pi * v)**(1/3)
