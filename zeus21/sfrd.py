@@ -513,7 +513,7 @@ class get_T21_coefficients:
         self.xe_avg = self.xe_avg_ad + np.cumsum((self.Gammaion_II+self.Gammaion_III)[::-1])[::-1]
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             self.xe_avg = 2e-4 * np.ones_like(self.Gammaion_II) #we force this when we emualte 21cmdast to compare both codes on the same footing
-        self.xe_avg = np.min(self.xe_avg, 1.0)
+        self.xe_avg = np.fmin(self.xe_avg, 1.0-1e-9)
 
         #and heat from Xrays
         self._fheat = pow(self.xe_avg,0.225)
