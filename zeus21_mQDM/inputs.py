@@ -14,6 +14,7 @@ from . import constants
 import numpy as np
 from classy import Class
 from scipy.interpolate import interp1d, RegularGridInterpolator
+import pkg_resources
 
 class User_Parameters:
     """
@@ -206,10 +207,11 @@ class Cosmo_Parameters:
         if not UserParams.FLAG_MINICHARGED_DM:
             self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
         else: 
-            _zs_mQDM = np.loadtxt("mQDM_redshifts.txt")
-            _logm_mQDM = np.loadtxt("mQDM_logm.txt")
-            _logQ_mQDM = np.loadtxt("mQDM_logQ.txt")
-            _Tk_mQDM = np.reshape(np.loadtxt(f"mQDM_Tk_f{self.f_mQDM}.txt"),shape=(len(_zs_mQDM),len(_logm_mQDM),len(_logQ_mQDM)))
+            _zs_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_redshifts.txt"))
+            _logm_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logm.txt"))
+            _logQ_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ.txt"))
+            _Tk_mQDM = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"mQDM_Tk_f{self.f_mQDM}.txt")),
+                                  shape=(len(_zs_mQDM),len(_logm_mQDM),len(_logQ_mQDM)))
             _Tk_mQDM_interp = RegularGridInterpolator((np.log10(_zs_mQDM),_logm_mQDM,_logQ_mQDM),_Tk_mQDM)
             self.Tadiabaticint = lambda z: _Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
         self.xetanhint = interp1d(_thermo['z'], _thermo['x_e'])
