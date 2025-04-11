@@ -13,7 +13,7 @@ from . import constants
 
 import numpy as np
 from classy import Class
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RegularGridInterpolator
 
 class User_Parameters:
     """
@@ -45,6 +45,9 @@ class User_Parameters:
         Small (<3%) correction in dd, but non trivial (~10%) in d-xa and d-Tx
     FLAG_WF_ITERATIVE: bool
         Whether to iteratively do the WF correction as in Hirata2006.
+    FLAG_MINICHARGED_DM: bool
+        Whether to include a modelling for a minicharged dark matter (see Munoz+18, HERAcollab+22). Default is False.
+        If True, zeus21 will read from the mQDM data in the data folder and only impacts the baryonic temperature. 
 
     Attributes
     ----------
@@ -54,7 +57,7 @@ class User_Parameters:
 
     def __init__(self, precisionboost = 1.0, FLAG_FORCE_LINEAR_CF = 0, 
                  MIN_R_NONLINEAR = 2.0, MAX_R_NONLINEAR = 100.0,
-                 FLAG_DO_DENS_NL = False, FLAG_WF_ITERATIVE = True):
+                 FLAG_DO_DENS_NL = False, FLAG_WF_ITERATIVE = True, FLAG_MINICHARGED_DM=False):
         
         self.precisionboost = precisionboost
         self.FLAG_FORCE_LINEAR_CF = FLAG_FORCE_LINEAR_CF
@@ -67,6 +70,7 @@ class User_Parameters:
 
         self.FLAG_WF_ITERATIVE = FLAG_WF_ITERATIVE
 
+        self.FLAG_MINICHARGED_DM = FLAG_MINICHARGED_DM
 
 
 class Cosmo_Parameters_Input:
@@ -100,9 +104,33 @@ class Cosmo_Parameters_Input:
 
 
 class Cosmo_Parameters:
-    "Class that will keep the cosmo parameters throughout"
+    """
+    Class that will keep the cosmo parameters throughout
 
-    def __init__(self, UserParams, CosmoParams_input, ClassCosmo):
+    Parameters
+    ----------
+    UserParams: User_Parameters class
+        User parameters for Zeus21.
+    CosmoParams_input: Cosmo_Parameters_Input class
+        Input cosmological parameters to CLASS.
+    ClassCosmo: classy.CLASS object
+        CLASS cosmology.
+    f_mQDM: float
+        Fraction of dark matter to be milicharged. Default is 0.5%.
+        For each f_mQDM, there should be the corresponding Tk file in the data folder.
+    logm_DM: float
+        Log10 of the mass (in GeV) of the minicharged dark matter particles. Default is 0.1 GeV.
+    logQ_DM: float
+        Log10 of the charge (in units of the electron charge) of the minicharged dark matter particles. Default is 1e-5.
+
+    ATTRIBUTES
+    ----------
+    ...
+
+    """
+
+    def __init__(self, UserParams, CosmoParams_input, ClassCosmo, 
+                 f_mQDM = 0.005, logm_DM = 0.1, logQ_DM = 1e-5):
 
         self.omegab = CosmoParams_input.omegab
         self.omegac = CosmoParams_input.omegac
@@ -110,6 +138,12 @@ class Cosmo_Parameters:
         self.As = CosmoParams_input.As
         self.ns = CosmoParams_input.ns
         self.tau_fid = CosmoParams_input.tau_fid
+
+        # minicharged dark matter
+        if UserParams.FLAG_MINICHARGED_DM:
+            self.f_mQDM = f_mQDM
+            self.m_DM = logm_DM
+            self.Q_DM = logQ_DM
 
         #other params in the input
         self.kmax_CLASS = CosmoParams_input.kmax_CLASS
@@ -169,7 +203,15 @@ class Cosmo_Parameters:
         self.Hofzint = interp1d(self._ztabinchi,self._Hztab)
 
         _thermo = ClassCosmo.get_thermodynamics()
-        self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
+        if not UserParams.FLAG_MINICHARGED_DM:
+            self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
+        else: 
+            _zs_mQDM = np.loadtxt("./data/mQDM_redshifts.txt")
+            _logm_mQDM = np.loadtxt("./data/mQDM_logm.txt")
+            _logQ_mQDM = np.loadtxt("./data/mQDM_logQ.txt")
+            _Tk_mQDM = np.reshape(np.loadtxt(f"./data/mQDM_Tk_f{self.f_mQDM}.txt"),shape=(len(_zs_mQDM),len(_logm_mQDM),len(_logQ_mQDM)))
+            _Tk_mQDM_interp = RegularGridInterpolator((np.log10(_zs_mQDM),_logm_mQDM,_logQ_mQDM),_Tk_mQDM)
+            self.Tadiabaticint = lambda z: _Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
         self.xetanhint = interp1d(_thermo['z'], _thermo['x_e'])
 
         _ztabingrowth = np.linspace(0., 100. , 2000)
