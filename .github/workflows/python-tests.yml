@@ -31,19 +31,21 @@ jobs:
         
     - name: Install CLASS
       run: |
-        git clone https://github.com/lesgourg/class_public.git class_temp
-        cd class_temp
+        git clone https://github.com/lesgourg/class_public.git
+        cd class_public
         make
         cd python
         python setup.py install
         cd ../../
-        rm -rf class_temp
+        # Keep the directory for data files
         
     - name: Install package
       run: |
         pip install -e .
     
     - name: Run tests with coverage
+      env:
+        CLASSDIR: ${{ github.workspace }}/class_public
       run: |
         python -m pytest --cov=zeus21 tests/
     
