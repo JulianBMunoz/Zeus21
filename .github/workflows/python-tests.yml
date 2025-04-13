@@ -1,0 +1,36 @@
+name: Python Tests
+
+on:
+  push:
+    branches: [ main, tests_claude ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install CLASS dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gfortran
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
+        pip install Cython
+        pip install git+https://github.com/lesgourg/class_public.git@v3.3.0
+        pip install -e .
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/
