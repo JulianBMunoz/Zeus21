@@ -1,7 +1,6 @@
 pytest
 numpy
 scipy
-classy
 mcfit
 numexpr
 astropy

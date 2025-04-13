@@ -28,7 +28,19 @@ jobs:
         pip install pytest pytest-cov
         pip install Cython
         pip install -r requirements.txt
-        pip install git+https://github.com/lesgourg/class_public.git@v3.3.0
+        
+    - name: Install CLASS
+      run: |
+        git clone https://github.com/lesgourg/class_public.git class_temp
+        cd class_temp
+        make
+        cd python
+        python setup.py install
+        cd ../../
+        rm -rf class_temp
+        
+    - name: Install package
+      run: |
         pip install -e .
     
     - name: Run tests with coverage
