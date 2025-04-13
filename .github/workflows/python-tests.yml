@@ -2,7 +2,7 @@ name: Python Tests
 
 on:
   push:
-    branches: [ main, tests_claude ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -25,12 +25,17 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
+        pip install pytest pytest-cov
         pip install -r requirements.txt
         pip install Cython
         pip install git+https://github.com/lesgourg/class_public.git@v3.3.0
         pip install -e .
     
-    - name: Run tests
+    - name: Run tests with coverage
       run: |
-        python -m pytest tests/
+        python -m pytest --cov=zeus21 tests/
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        fail_ci_if_error: false
