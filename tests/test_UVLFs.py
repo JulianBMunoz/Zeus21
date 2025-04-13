@@ -74,7 +74,7 @@ def test_AUV_function():
     A_UV = AUV(AstroParams, z_test, MUV_test)
     
     # Check that attenuation is non-negative
-    assert A_UV >= 0.0
+    assert np.all(A_UV >= 0.0)
     
     # Test the HIGH_Z_DUST flag behavior
     z_high = np.array([9.0])  # High redshift above _zmaxdata
