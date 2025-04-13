@@ -1,7 +1,11 @@
 pytest
 numpy
 scipy
-sphinx
-myst_parser
+classy
+mcfit
 numexpr
 astropy
+powerbox
+pyfftw
+sphinx
+myst_parser
