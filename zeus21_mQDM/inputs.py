@@ -210,7 +210,7 @@ class Cosmo_Parameters:
             _zs_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_redshifts.txt"))
             _logm_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logm.txt"))
             _logQ_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ.txt"))
-            _Tk_mQDM = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"mQDM_Tk_f{self.f_mQDM}.txt")),
+            _Tk_mQDM = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"data/mQDM_Tk_f{self.f_mQDM}.txt")),
                                   shape=(len(_zs_mQDM),len(_logm_mQDM),len(_logQ_mQDM)))
             _Tk_mQDM_interp = RegularGridInterpolator((np.log10(_zs_mQDM),_logm_mQDM,_logQ_mQDM),_Tk_mQDM)
             self.Tadiabaticint = lambda z: _Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
