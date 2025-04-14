@@ -131,7 +131,7 @@ class Cosmo_Parameters:
     """
 
     def __init__(self, UserParams, CosmoParams_input, ClassCosmo, 
-                 f_mQDM = 0.005, logm_DM = 0.1, logQ_DM = 1e-5):
+                 f_mQDM = 0.005, logm_DM = -1, logQ_DM = -5):
 
         self.omegab = CosmoParams_input.omegab
         self.omegac = CosmoParams_input.omegac
@@ -143,8 +143,8 @@ class Cosmo_Parameters:
         # minicharged dark matter
         if UserParams.FLAG_MINICHARGED_DM:
             self.f_mQDM = f_mQDM
-            self.m_DM = logm_DM
-            self.Q_DM = logQ_DM
+            self.logm_DM = logm_DM
+            self.logQ_DM = logQ_DM
 
         #other params in the input
         self.kmax_CLASS = CosmoParams_input.kmax_CLASS
@@ -207,12 +207,12 @@ class Cosmo_Parameters:
         if not UserParams.FLAG_MINICHARGED_DM:
             self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
         else: 
-            _zs_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_redshifts.txt"))
-            _logm_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logm.txt"))
-            _logQ_mQDM = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ.txt"))
-            _Tk_mQDM = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"data/mQDM_Tk_f{self.f_mQDM}.txt")),
-                                  shape=(len(_zs_mQDM),len(_logm_mQDM),len(_logQ_mQDM)))
-            _Tk_mQDM_interp = RegularGridInterpolator((np.log10(_zs_mQDM),_logm_mQDM,_logQ_mQDM),_Tk_mQDM)
+            _zs_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_redshifts.txt"))
+            _logm_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logm.txt"))
+            _logQ_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ.txt"))
+            _Tk_mQDM_tab = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"data/mQDM_Tk_f{self.f_mQDM}.txt")),
+                                  shape=(len(_zs_mQDM_tab),len(_logm_mQDM_tab),len(_logQ_mQDM_tab)))
+            _Tk_mQDM_interp = RegularGridInterpolator((np.log10(_zs_mQDM_tab),_logm_mQDM_tab,_logQ_mQDM_tab),_Tk_mQDM_tab)
             self.Tadiabaticint = lambda z: _Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
         self.xetanhint = interp1d(_thermo['z'], _thermo['x_e'])
 
