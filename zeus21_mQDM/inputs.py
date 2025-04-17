@@ -212,7 +212,7 @@ class Cosmo_Parameters:
             _logQ_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ.txt"))
             _Tk_mQDM_tab = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"data/mQDM_Tk_f{self.f_mQDM}.txt")),
                                   shape=(len(_zs_mQDM_tab),len(_logm_mQDM_tab),len(_logQ_mQDM_tab)))
-            _Tk_mQDM_interp = RegularGridInterpolator((np.log10(_zs_mQDM_tab),_logm_mQDM_tab,_logQ_mQDM_tab),_Tk_mQDM_tab,bounds_error=False,fill_value=None)
+            _Tk_mQDM_interp = RegularGridInterpolator((_zs_mQDM_tab,_logm_mQDM_tab,_logQ_mQDM_tab),_Tk_mQDM_tab,bounds_error=False,fill_value=None)
             self.Tadiabaticint = lambda z: _Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
         self.xetanhint = interp1d(_thermo['z'], _thermo['x_e'])
 
