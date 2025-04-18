@@ -213,7 +213,7 @@ class Cosmo_Parameters:
             _Tk_mQDM_tab = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"data/mQDM_Tk_f{self.f_mQDM}.txt")),
                                   shape=(len(_zs_mQDM_tab),len(_logm_mQDM_tab),len(_logQ_mQDM_tab)))
             _Tk_mQDM_interp = RegularGridInterpolator((_zs_mQDM_tab,_logm_mQDM_tab,_logQ_mQDM_tab),_Tk_mQDM_tab,bounds_error=False,fill_value=None)
-            self.Tadiabaticint = lambda z: [0.1 for i in range(len(z))]#_Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
+            self.Tadiabaticint = lambda z: np.array([0.1 for i in range(len(z))])#_Tk_mQDM_interp((z,self.logm_DM,self.logQ_DM))
         self.xetanhint = interp1d(_thermo['z'], _thermo['x_e'])
 
         _ztabingrowth = np.linspace(0., 100. , 2000)
