@@ -558,8 +558,8 @@ class get_T21_coefficients:
             elif User_Parameters.WHICH_SALPHA == "Mittal":
                 _DopplerWidth = constants.freqLyA * np.sqrt(2.0 * constants.KtoeV * self.Tk_avg / (constants.mH_GeV*1e9)) #Doppler width in Hz
                 _VoigtParam = constants.Aalpha / (4 * np.pi * _DopplerWidth)
-                _recoilParam = constants.HztoeV * constants.freqLyA / np.sqrt(2 * constants.mH_GeV * constants.KtoeV * self.Tk_avg)
-                _xiMittal = 9*np.pi / (4 * _VoigtParam * _tau_GP * _recoilParam**3)
+                _recoilParam = constants.HztoeV * constants.freqLyA / np.sqrt(2 * constants.mH_GeV*1e9 * constants.KtoeV * self.Tk_avg)
+                _xiMittal = 9 * np.pi / (4 * _VoigtParam * _tau_GP * _recoilParam**3)
 
             ### iteration routine to find Tcolor and Ts
             _invTs_tryfirst = 1.0/self.T_CMB
