@@ -568,10 +568,10 @@ class get_T21_coefficients:
 
                 #update xalpha
                 if User_Parameters.WHICH_SALPHA == "Hirata":
-                    _Salphatilde = Salphatilde_Hirata(self.Tk_avg, self._invTs_avg, _factorxi)
-                elif User_Parameters.WHICH_SALPHA == "Hirata":
-                    _Salphatilde = Salphatidle_Mittal(_xiMittal)
-                self.coeff_Ja_xa = self._coeff_Ja_xa_0 * _Salphatilde
+                    self._Salphatilde = Salphatilde_Hirata(self.Tk_avg, self._invTs_avg, _factorxi) # remove the self?
+                elif User_Parameters.WHICH_SALPHA == "Mittal":
+                    self._Salphatilde = Salphatidle_Mittal(_xiMittal)
+                self.coeff_Ja_xa = self._coeff_Ja_xa_0 * _Salphatilde # remove the self?
                 self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
 
                 #and Tcolor^-1
