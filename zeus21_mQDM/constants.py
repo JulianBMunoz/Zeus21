@@ -24,7 +24,7 @@ MsunToMpc = MsunToKm * KmToMpc
 Msuntogram = 1.989e33
 GramtoGeV = 1 / 5.6095886e23
 MsuntoGeV = Msuntogram/GramtoGeV
-mH_GeV = 0.93827209
+mH_GeV = 0.93827209 # c^2 GeV
 mprotoninMsun = mH_GeV/MsuntoGeV
 
 c_kms = 299792.458
@@ -35,7 +35,10 @@ Mpctoyr = MpcToKm/c_kms/yrTos
 
 
 ergToK = 7.24e15
-KtoeV = 8.62e-5
+KtoeV = 8.62e-5 # eV/K, Boltzmann constant
+HztoeV = 4.14e-15 # eV/Hz, Planck constant
+#eV = 1.6e-19 # 1 ev in J
+#hPlanck = HztoeV * eV
 
 #LW related constants
 Elw_eV = 11.9 #eV
@@ -68,6 +71,7 @@ widthLyAcm = widthLyA/(c_kms*1e5) #cm
 Tstar_21 = 0.0682 #T* in K for the 21cm transition
 A10_21 = 2.85e-15 #1/s, Einstein 10 coeff for HI
 
+Aalpha = 6.25e8 #Hz, Einstein spontaneous emission coefficient of LyA transition
 
 #whether to renormalize the C2 oefficients (appendix in 2302.08506)
 #C2_RENORMALIZATION_FLAG = 1 - FLAG_FORCE_LINEAR_CF

@@ -20,6 +20,7 @@ from astropy import constants as const
 
 import scipy
 from scipy import interpolate
+from scipy.special import hyp2f1
 
 import pickle
 
@@ -538,9 +539,6 @@ class get_T21_coefficients:
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             _tau_GP/=Cosmo_Parameters.f_H #for some reason they multiuply by N0 (all baryons) and not NH0.
 
-        _xiHirata = pow(_tau_GP*1e-7,1/3.)*pow(self.Tk_avg,-2./3)
-        _factorxi = (1.0 + 2.98394*_xiHirata + 1.53583 * _xiHirata**2 + 3.8528 * _xiHirata**3)
-
 
         #prefactor without the Salpha correction from Hirata2006
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
@@ -553,13 +551,26 @@ class get_T21_coefficients:
         self.invTcol_avg = 1.0 / self.Tk_avg
         self._invTs_avg = (1.0/self.T_CMB+self.xa_avg*self.invTcol_avg)/(1+self.xa_avg)
         if(User_Parameters.FLAG_WF_ITERATIVE==True): #iteratively find Tcolor and Ts. Could initialize one to zero, but this should converge faster
+            ### LyA stuff to find components of Salpha correction factor
+            if User_Parameters.WHICH_SALPHA == "Hirata":
+                _xiHirata = pow(_tau_GP*1e-7,1/3.)*pow(self.Tk_avg,-2./3)
+                _factorxi = (1.0 + 2.98394*_xiHirata + 1.53583 * _xiHirata**2 + 3.8528 * _xiHirata**3)
+            elif User_Parameters.WHICH_SALPHA == "Mittal":
+                _DopplerWidth = constants.freqLyA * np.sqrt(2.0 * constants.KtoeV * self.Tk_avg / (constants.mH_GeV*1e9)) #Doppler width in Hz
+                _VoigtParam = constants.Aalpha / (4 * np.pi * _DopplerWidth)
+                _recoilParam = constants.HztoeV * constants.freqLyA / np.sqrt(2 * constants.mH_GeV * constants.KtoeV * self.Tk_avg)
+                _xiMittal = 9*np.pi / (4 * _VoigtParam * _tau_GP * _recoilParam**3)
+
             ### iteration routine to find Tcolor and Ts
             _invTs_tryfirst = 1.0/self.T_CMB
             while(np.sum(np.fabs(_invTs_tryfirst/self._invTs_avg - 1.0))>0.01): #no more than 1% error total
                 _invTs_tryfirst = self._invTs_avg
 
                 #update xalpha
-                _Salphatilde = (1.0 - 0.0632/self.Tk_avg + 0.116/self.Tk_avg**2 - 0.401/self.Tk_avg*self._invTs_avg + 0.336*self._invTs_avg/self.Tk_avg**2)/_factorxi
+                if User_Parameters.WHICH_SALPHA == "Hirata":
+                    _Salphatilde = Salphatilde_Hirata(self.Tk_avg, self._invTs_avg, _factorxi)
+                elif User_Parameters.WHICH_SALPHA == "Hirata":
+                    _Salphatilde = Salphatidle_Mittal(_xiMittal)
                 self.coeff_Ja_xa = self._coeff_Ja_xa_0 * _Salphatilde
                 self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
 
@@ -882,3 +893,8 @@ def Salpha_exp(z, T, xe):
     gamma_Sobolev = 1.0/tau_GP_noreio
     return np.exp( - 0.803 * pow(T,-2./3.) * pow(1e-6/gamma_Sobolev,-1.0/3.0))
 
+def Salphatilde_Hirata(Tk, invTs, _factorxi):
+    return (1.0 - 0.0632/Tk + 0.116/Tk**2 - 0.401/Tk*invTs + 0.336*invTs/Tk**2)/_factorxi
+
+def Salphatidle_Mittal(_xiMittal):
+    return 1 - hyp2f1(1/3, 2/3, 1, -_xiMittal)
