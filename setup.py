@@ -22,5 +22,6 @@ setup(
         "classy",
         "numexpr",
         "astropy",
+        "mpmath",
        ],
 )
