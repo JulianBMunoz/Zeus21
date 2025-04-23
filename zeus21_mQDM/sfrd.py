@@ -897,5 +897,4 @@ def Salphatilde_Hirata(Tk, invTs, _factorxi):
     return (1.0 - 0.0632/Tk + 0.116/Tk**2 - 0.401/Tk*invTs + 0.336*invTs/Tk**2)/_factorxi
 
 def Salphatidle_Mittal(_xiMittal):
-    vectorized_hyper = np.vectorize(lambda z: float(hyper([1/3,2/3,1], [], z)))
-    return 1 - vectorized_hyper(-_xiMittal)
+    return 1 - np.array([float(hyper([1/3,2/3,1],[],-xi)) for xi in _xiMittal])
