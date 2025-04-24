@@ -239,7 +239,7 @@ class reionization_maps:
             self.compute_massweighted_xHII(CosmoParams, self.lowres_massweighting)
         
         if self.PRINT_TIMER:
-            print_timer(self._start_time, text_before="Total computation time: ")
+            z21_utilities.print_timer(self._start_time, text_before="Total computation time: ")
         
 
     def generate_density(self, ClassyCosmo, CorrFClass):
@@ -260,7 +260,7 @@ class reionization_maps:
             pb = pbox.PowerBox(N=self.ncells, dim=3, pk=(lambda k: np.exp(pk_spl(np.log(k)))), boxlength=self.boxlength, seed=self.seed)
         density_field = pb.delta_x()
         if self.PRINT_TIMER:
-            print_timer(start_time, text_before="    done in ")
+            z21_utilities.print_timer(start_time, text_before="    done in ")
         return density_field
 
     def generate_density_allz(self, CosmoParams):
@@ -272,7 +272,7 @@ class reionization_maps:
         density_lastz = np.copy(self.density)
         self.density_allz = density_lastz[np.newaxis]*growthfactor_ratio
         if self.PRINT_TIMER:
-            print_timer(start_time, text_before="    done in ")
+            z21_utilities.print_timer(start_time, text_before="    done in ")
         return self.density_allz
 
     def compute_k(self):
@@ -287,7 +287,7 @@ class reionization_maps:
         density_fft = np.fft.fftn(self.density)
         density_smoothed_allr = np.array([z21_utilities.tophat_smooth(rr, self._k, density_fft) for rr in self.r])
         if self.PRINT_TIMER:
-            print_timer(start_time, text_before="    done in ")
+            z21_utilities.print_timer(start_time, text_before="    done in ")
         return density_smoothed_allr
 
     def generate_xHII(self, CosmoParams, CoeffStructure, BMF):
@@ -302,7 +302,7 @@ class reionization_maps:
             ion_field_allz[i] = ion_field
             ion_frac[i] = np.sum(ion_field)/(self.ncells**3)
         if self.PRINT_TIMER:
-            print_timer(start_time, text_before="    done in ")
+            z21_utilities.print_timer(start_time, text_before="    done in ")
         return ion_field_allz, ion_frac
 
     def ionize(self,CosmoParams, CoeffStructure, curr_z_idx):
@@ -341,6 +341,6 @@ class reionization_maps:
             print("Computing mass weighted ionized fraction...")
         self.ion_frac_massweighted = np.average((1+d_allz) * ion_allz, axis=(1, 2, 3))
         if self.PRINT_TIMER:
-            print_timer(start_time, text_before="    done in ")
+            z21_utilities.print_timer(start_time, text_before="    done in ")
         return self.ion_frac_massweighted
 
