@@ -559,7 +559,7 @@ class get_T21_coefficients:
                 _DopplerWidth = constants.freqLyA * np.sqrt(2.0 * constants.KtoeV * self.Tk_avg / (constants.mH_GeV*1e9)) #Doppler width in Hz
                 _VoigtParam = constants.Aalpha / (4 * np.pi * _DopplerWidth)
                 _recoilParam = constants.HztoeV * constants.freqLyA / np.sqrt(2 * constants.mH_GeV*1e9 * constants.KtoeV * self.Tk_avg)
-                _xiMittal = 9 * np.pi / (4 * _VoigtParam * _tau_GP * _recoilParam**3)
+                _xiMittal = np.fmin(9 * np.pi / (4 * _VoigtParam * _tau_GP * _recoilParam**3), 1e20)
                 self._Salphatilde = Salphatidle_Mittal(_xiMittal) # remove the self?
 
                 #compute xalpha (in this case, WHICH_SALPHA="Mittal", xalpha is independent of Ts)
