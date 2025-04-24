@@ -527,7 +527,7 @@ class get_T21_coefficients:
         self.Tk_ad = cosmology.Tadiabatic(Cosmo_Parameters, self.zintegral)
         if(Cosmo_Parameters.Flag_emulate_21cmfast==True):
             self.Tk_ad*=0.95 #they use recfast, so their 'cosmo' temperature is slightly off
-        self.Tk_avg = self.Tk_ad + self.Tk_xray
+        self.Tk_avg = np.fmax(self.Tk_ad + self.Tk_xray,1e3)
 
 
         # LyA stuff to find components of Salpha correction factor
