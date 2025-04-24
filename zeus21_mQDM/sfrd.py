@@ -560,6 +560,11 @@ class get_T21_coefficients:
                 _VoigtParam = constants.Aalpha / (4 * np.pi * _DopplerWidth)
                 _recoilParam = constants.HztoeV * constants.freqLyA / np.sqrt(2 * constants.mH_GeV*1e9 * constants.KtoeV * self.Tk_avg)
                 _xiMittal = 9 * np.pi / (4 * _VoigtParam * _tau_GP * _recoilParam**3)
+                self._Salphatilde = Salphatidle_Mittal(_xiMittal) # remove the self?
+
+                #compute xalpha (in this case, WHICH_SALPHA="Mittal", xalpha is independent of Ts)
+                self.coeff_Ja_xa = self._coeff_Ja_xa_0 * self._Salphatilde # remove the self?
+                self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
 
             ### iteration routine to find Tcolor and Ts
             _invTs_tryfirst = 1.0/self.T_CMB
@@ -569,13 +574,14 @@ class get_T21_coefficients:
                 #update xalpha
                 if User_Parameters.WHICH_SALPHA == "Hirata":
                     self._Salphatilde = Salphatilde_Hirata(self.Tk_avg, self._invTs_avg, _factorxi) # remove the self?
-                elif User_Parameters.WHICH_SALPHA == "Mittal":
-                    self._Salphatilde = Salphatidle_Mittal(_xiMittal) # remove the self?
-                self.coeff_Ja_xa = self._coeff_Ja_xa_0 * self._Salphatilde # remove the self?
-                self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
+                    self.coeff_Ja_xa = self._coeff_Ja_xa_0 * self._Salphatilde # remove the self?
+                    self.xa_avg = self.coeff_Ja_xa * self.Jalpha_avg
 
-                #and Tcolor^-1
-                self.invTcol_avg = 1.0/self.Tk_avg + constants.gcolorfactorHirata * 1.0/self.Tk_avg * (_invTs_tryfirst - 1.0/self.Tk_avg)
+                    #and Tcolor^-1
+                    self.invTcol_avg = 1.0/self.Tk_avg + constants.gcolorfactorHirata * 1.0/self.Tk_avg * (_invTs_tryfirst - 1.0/self.Tk_avg)
+                elif User_Parameters.WHICH_SALPHA == "Mittal":
+                    #and Tcolor^-1
+                    self.invTcol_avg = _invTs_tryfirst * ( (1.0/_invTs_tryfirst + constants.gcolorfactorHirata) / (self.Tk_avg + constants.gcolorfactorHirata) )
 
                 #and finally Ts^-1
                 self._invTs_avg = (1.0/self.T_CMB+self.xa_avg * self.invTcol_avg)/(1+self.xa_avg)

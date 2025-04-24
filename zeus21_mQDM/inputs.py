@@ -48,7 +48,8 @@ class User_Parameters:
         Whether to iteratively do the WF correction as in Hirata2006.
     WHICH_SALPHA: str
         Implement the scattering correction S from Hirata2006 (WHICH_SALPHA="Hirata", breaks at Tk>2K) or Mittal2021 (WHICH_SALPHA="Mittal"). 
-        Default is "Mittal". Only used if FLAG_WF_ITERATIVE=True.
+        Only used if FLAG_WF_ITERATIVE=True.
+        Default is "Hirata", and "Mittal" should be used for extreme dark matter parameters when using FLAG_MINICHARGED_DM=True.
     FLAG_MINICHARGED_DM: bool
         Whether to include a modelling for a minicharged dark matter (see Munoz+18, HERAcollab+22). Default is False.
         If True, zeus21 will read from the mQDM data in the data folder and only impacts the baryonic temperature. 
@@ -61,7 +62,7 @@ class User_Parameters:
 
     def __init__(self, precisionboost = 1.0, FLAG_FORCE_LINEAR_CF = 0, 
                  MIN_R_NONLINEAR = 2.0, MAX_R_NONLINEAR = 100.0,
-                 FLAG_DO_DENS_NL = False, FLAG_WF_ITERATIVE = True, WHICH_SALPHA="Mittal",
+                 FLAG_DO_DENS_NL = False, FLAG_WF_ITERATIVE = True, WHICH_SALPHA="Hirata",
                  FLAG_MINICHARGED_DM=False):
         
         self.precisionboost = precisionboost
