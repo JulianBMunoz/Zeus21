@@ -213,9 +213,9 @@ class Cosmo_Parameters:
         if not UserParams.FLAG_MINICHARGED_DM:
             self.Tadiabaticint = interp1d(_thermo['z'], _thermo['Tb [K]'])
         else: 
-            _zs_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_redshifts.txt"))
-            _logm_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logm.txt"))
-            _logQ_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ.txt"))
+            _zs_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_redshifts_f{self.f_mQDM}.txt"))
+            _logm_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logm_f{self.f_mQDM}.txt"))
+            _logQ_mQDM_tab = np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", "data/mQDM_logQ_f{self.f_mQDM}.txt"))
             _Tk_mQDM_tab = np.reshape(np.loadtxt(pkg_resources.resource_filename("zeus21_mQDM", f"data/mQDM_Tk_f{self.f_mQDM}.txt")),
                                   shape=(len(_zs_mQDM_tab),len(_logm_mQDM_tab),len(_logQ_mQDM_tab)))
             _Tk_mQDM_interp = RegularGridInterpolator((_zs_mQDM_tab,_logm_mQDM_tab,_logQ_mQDM_tab),_Tk_mQDM_tab,bounds_error=False,fill_value=None)
