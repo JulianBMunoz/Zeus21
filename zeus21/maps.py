@@ -246,8 +246,9 @@ class reionization_maps:
             self.compute_massweighted_xHII(CosmoParams, self.lowres_massweighting)
 
         ### computing zreion and treion
-        self.zreion = self.compute_zreion_frombinaryxHII()
-        self.treion = self.compute_treion(ClassyCosmo)
+        if COMPUTE_ZREION:
+            self.zreion = self.compute_zreion_frombinaryxHII()
+            self.treion = self.compute_treion(ClassyCosmo)
         
         if self.PRINT_TIMER:
             z21_utilities.print_timer(self._start_time, text_before="Total computation time: ")
@@ -368,7 +369,7 @@ class reionization_maps:
     def compute_treion(self,ClassyCosmo):
         if self.PRINT_TIMER:
             start_time = time.time()
-            print("Computing zreion map...")
+            print("Computing treion map...")
         treion = cosmology.time_at_redshift(ClassyCosmo,self.zreion)
         if self.PRINT_TIMER:
             z21_utilities.print_timer(start_time, text_before="    done in ")
