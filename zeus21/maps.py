@@ -154,6 +154,8 @@ class reionization_maps:
         Whether to compute the mass weighted ionized fraction. If True, COMPUTE_DENSITY_AT_ALLZ will be forced to True, thus increasing dramatically computation time. Default is False.
     lowres_massweighting: int
         Compute the mass-weighted ionized fraction more efficiently by using lower resolution density and ionized fields. Has to be >=1 and an integer. Default is 1.
+    COMPUTE_ZREION: bool
+        Whether to compute the reionization redshift and time fields. Default is False.
 
     Attributes
     ----------
@@ -175,13 +177,18 @@ class reionization_maps:
         Volume weighted ionized fraction at all the redshifts asked by the user.
     ion_frac_massweighted: 1D np.array
         Mass weighted ionized fraction at all the redshifts asked by the user. Only computed if COMPUTE_MASSWEIGHTED_IONFRAC is True.
+    zreion: 3D np.array
+        Reionization redshift field.
+    treion: 3D np.array
+        Reionization time field.    
     """
     
     def __init__(self, CosmoParams, ClassyCosmo, CorrFClass, CoeffStructure, BMF, input_z, 
                  input_boxlength=300., ncells=300, seed=1234, r_precision=1., barrier=None, 
                  PRINT_TIMER=True, ENFORCE_BMF_SCALE=True, 
                  LOGNORMAL_DENSITY=False, COMPUTE_DENSITY_AT_ALLZ=False, SPHERIZE=False, 
-                 COMPUTE_MASSWEIGHTED_IONFRAC=False, lowres_massweighting=1):
+                 COMPUTE_MASSWEIGHTED_IONFRAC=False, lowres_massweighting=1,
+                 COMPUTE_ZREION=False):
         #Measure time elapsed from start
         self._start_time = time.time()
         
@@ -237,6 +244,10 @@ class reionization_maps:
         self.ion_frac_massweighted = np.empty(len(self.z))
         if self.COMPUTE_MASSWEIGHTED_IONFRAC:
             self.compute_massweighted_xHII(CosmoParams, self.lowres_massweighting)
+
+        ### computing zreion and treion
+        self.zreion = self.compute_zreion_frombinaryxHII()
+        self.treion = self.compute_treion(ClassyCosmo)
         
         if self.PRINT_TIMER:
             z21_utilities.print_timer(self._start_time, text_before="Total computation time: ")
@@ -343,4 +354,31 @@ class reionization_maps:
         if self.PRINT_TIMER:
             z21_utilities.print_timer(start_time, text_before="    done in ")
         return self.ion_frac_massweighted
+    
+    def compute_zreion_frombinaryxHII(self):
+        vectorized_zlist = np.vectorize(lambda iz: self.z[iz])
+        zreion = vectorized_zlist(np.argmin(self.ion_field_allz,axis=0)-1).reshape((self.ncells,self.ncells,self.ncells))
+        return zreion
+    
+    def compute_treion(ClassyCosmo):
+        return cosmology.time_at_redshift(ClassyCosmo,self.zreion)
+    
+    def _compute_ionfrac_from_zreion(self):
+        """
+        Way to compute the volume ionized fraction from zreion. Currently not used but there if needed.
+        """
+        zvalues = np.unique(self.zreion)
+        neutfrac = np.zeros(len(zvalues))
+        for i in range(len(zvalues)):
+            neutfrac[i] = np.sum(self.zreion<zvalues[i]) / self.ncells**3
+        return 1-neutfrac, zvalues
 
+    def _compute_ionfrac_from_treion(self):
+        """
+        Way to compute the volume ionized fraction from treion. Currently not used but there if needed.
+        """
+        tvalues = np.unique(self.treion)
+        neutfrac = np.zeros(len(tvalues))
+        for i in range(len(tvalues)):
+            neutfrac[i] = np.sum(self.treion>tvalues[i]) / self.ncells**3
+        return 1-neutfrac, tvalues
