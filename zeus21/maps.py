@@ -360,7 +360,7 @@ class reionization_maps:
         zreion = vectorized_zlist(np.argmin(self.ion_field_allz,axis=0)-1).reshape((self.ncells,self.ncells,self.ncells))
         return zreion
     
-    def compute_treion(ClassyCosmo):
+    def compute_treion(self,ClassyCosmo):
         return cosmology.time_at_redshift(ClassyCosmo,self.zreion)
     
     def _compute_ionfrac_from_zreion(self):
