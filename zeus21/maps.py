@@ -356,12 +356,23 @@ class reionization_maps:
         return self.ion_frac_massweighted
     
     def compute_zreion_frombinaryxHII(self):
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print("Computing zreion map...")
         vectorized_zlist = np.vectorize(lambda iz: self.z[iz])
         zreion = vectorized_zlist(np.argmin(self.ion_field_allz,axis=0)-1).reshape((self.ncells,self.ncells,self.ncells))
+        if self.PRINT_TIMER:
+            z21_utilities.print_timer(start_time, text_before="    done in ")
         return zreion
     
     def compute_treion(self,ClassyCosmo):
-        return cosmology.time_at_redshift(ClassyCosmo,self.zreion)
+        if self.PRINT_TIMER:
+            start_time = time.time()
+            print("Computing zreion map...")
+        treion = cosmology.time_at_redshift(ClassyCosmo,self.zreion)
+        if self.PRINT_TIMER:
+            z21_utilities.print_timer(start_time, text_before="    done in ")
+        return treion
     
     def _compute_ionfrac_from_zreion(self):
         """

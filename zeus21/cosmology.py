@@ -128,7 +128,7 @@ def time_at_redshift(ClassyCosmo,z):
     """
     background = ClassyCosmo.get_background()
     classy_t, classy_z = background['proper time [Gyr]'], background['z']
-    classy_tinterp = interpolate.interp1d(classy_z, classy_t)
+    classy_tinterp = interp1d(classy_z, classy_t)
     return classy_tinterp(z)
 
 def redshift_at_time(ClassyCosmo,t):
@@ -144,7 +144,7 @@ def redshift_at_time(ClassyCosmo,t):
     """
     background = ClassyCosmo.get_background()
     classy_t, classy_z = background['proper time [Gyr]'], background['z']
-    classy_tinterp = interpolate.interp1d(classy_t, classy_z)
+    classy_tinterp = interp1d(classy_t, classy_z)
     return classy_tinterp(t)
 
 def Hub(Cosmo_Parameters, z):
