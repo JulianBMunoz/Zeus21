@@ -376,7 +376,7 @@ class reionization_maps:
             nion_spl = spline(sample_d, BMF.nion_delta_r_int(CosmoParams, sample_d, ir).T[i])
             nrec_spl = spline(sample_d, BMF.nrec(CosmoParams, sample_d, BMF.ion_frac).T[i])
             partial_ion_spl = spline(sample_d, nion_spl(sample_d)/(1+nrec_spl(sample_d)))
-            partialion_field[i] = partial_ion_spl(self.density_allz)
+            partialion_field[i] = partial_ion_spl(self.density_allz[i])
         ion_field_partial_allz = np.clip(self.ion_field_allz + partialion_field, 0, 1)
 
         if self.PRINT_TIMER:
