@@ -255,7 +255,7 @@ class reionization_maps:
         self.ion_field_allz = self.generate_xHII(CosmoParams, CoeffStructure, BMF)
         self.ion_frac = self.compute_volumeweigthed_xHII(self.ion_field_allz)
         if self.INCLUDE_PARTIALION:
-            self.ion_field_partial_allz = self.generate_xHII_withPartialIonization(BMF)
+            self.ion_field_partial_allz = self.generate_xHII_withPartialIonization(CosmoParams, BMF)
             self.ion_frac_subpixel = self.compute_volumeweigthed_xHII(self.ion_field_partial_allz)
 
         ### computing the mass weighted ionized fraction
@@ -365,7 +365,7 @@ class reionization_maps:
             ion_field = np.any(ion_field_Rs, axis=0)
         return ion_field
     
-    def generate_xHII_withPartialIonization(self, BMF, ir=0):
+    def generate_xHII_withPartialIonization(self, CosmoParams, BMF, ir=0):
         if self.PRINT_TIMER:
             start_time = time.time()
             print("Generating ionized field with partial ionization...")
