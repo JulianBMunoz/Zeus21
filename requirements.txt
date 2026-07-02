@@ -1,1 +1,9 @@
 pytest
+sphinx
+sphinx-rtd-theme
+sphinx-autoapi
+sphinx-copybutton
+myst-parser
+nbsphinx
+pandoc
+ipykernel

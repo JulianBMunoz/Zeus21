@@ -14,10 +14,6 @@ build:
   tools:
     python: "3.12"
 
-
-conda:
-  environment: docs/environment.yaml
-
 python:
   install:
     - requirements: requirements.txt
