@@ -1,0 +1,17 @@
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  - pip
+  - ipython
+  - sphinx
+  - sphinx-rtd-theme
+  - sphinx-autoapi
+  - sphinx-copybutton
+  - myst_parser
+  - nbsphinx
+  - pandoc
+  - ipykernel
+  - pip:
+    - .

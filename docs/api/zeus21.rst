@@ -1,9 +1,6 @@
 zeus21 package
 ==============
 
-Submodules
-----------
-
 zeus21.LFs module
 -----------------
 

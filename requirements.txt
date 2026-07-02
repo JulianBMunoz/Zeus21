@@ -1,12 +1,1 @@
 pytest
-numpy>=2.0
-scipy
-mcfit
-numexpr
-astropy
-powerbox
-pyfftw
-sphinx
-sphinx-rtd-theme
-myst_parser
-tqdm

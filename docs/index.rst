@@ -1,18 +1,31 @@
-Zeus21 Documentation
-====================
-
-Welcome to the Zeus21 documentation.
-
+.. image:: ./images/Zeus21Logo-Horizontal.jpg
+   :width: 75%
+   :align: center
 
 .. include:: ../README.md
    :parser: myst_parser.sphinx_
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :hidden:
+   :maxdepth: 1
 
-   api/modules
+   installation
+   tutorials
+   acknowledging
+
+.. toctree::
+   :hidden:
+   :caption: API Reference
+
+   autoapi/zeus21/index
+
+.. toctree::
+   :hidden:
+   :caption: Development
+
+   developer_install
+   authors
 
 
 Indices and tables
