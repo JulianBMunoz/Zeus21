@@ -35,6 +35,4 @@ autosummary_generate = True
 #html_theme = 'alabaster'
 #html_static_path = ['_static']
 
-html_css_files = [
-    'css/rtd_dark.css',
-]
+html_theme = "sphinx_rtd_theme"
