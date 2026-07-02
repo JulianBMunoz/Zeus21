@@ -9,7 +9,7 @@ dependencies:
   - sphinx-rtd-theme
   - sphinx-autoapi
   - sphinx-copybutton
-  - myst_parser
+  - myst-parser
   - nbsphinx
   - pandoc
   - ipykernel
