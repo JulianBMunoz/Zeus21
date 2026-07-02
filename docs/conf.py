@@ -22,6 +22,10 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
+html_css_files = [
+    'css/rtd_dark.css',
+]
+
 templates_path = ['_templates']
 exclude_patterns = []
 
