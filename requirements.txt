@@ -7,5 +7,6 @@ astropy
 powerbox
 pyfftw
 sphinx
+sphinx-rtd-theme
 myst_parser
 tqdm
