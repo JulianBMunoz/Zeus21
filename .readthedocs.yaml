@@ -14,8 +14,12 @@ build:
   tools:
     python: "3.12"
 
+
+conda:
+  environment: docs/environment.yaml
+
 python:
   install:
-    - requirements: docs/environment.yaml
+    - requirements: requirements.txt
     - method: pip
       path: .
