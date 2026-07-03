@@ -1,3 +1,8 @@
+.. image:: images/Zeus21Logo-Horizontal.jpg
+   :width: 75%
+   :align: center
+
+
 .. include:: ../README.md
    :parser: myst_parser.sphinx_
 
