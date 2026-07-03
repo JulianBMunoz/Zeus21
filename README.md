@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/Zeus21Logo-Horizontal.jpg" width=75% height=75%>
+<img src="docs/images/Zeus21Logo-Horizontal.jpg" width=75% height=75%>
 </p>
 
 
