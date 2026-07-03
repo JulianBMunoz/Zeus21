@@ -2,47 +2,19 @@
 SEDs and Green's functions for first-galaxy emission models.
 
 Authors: zeus21 v2 collaboration - June 2026
-    Emily Bregou
-    Hector Afonso G. Cruz
-    Sarah Libanore
-    Julian B. Muñoz
-    Yonny Sklansky
-    Emilie Thélie
+    Emily Bregou ;
+    Hector Afonso G. Cruz ;
+    Sarah Libanore ;
+    Julian B. Muñoz ;
+    Yonny Sklansky ;
+    Emilie Thélie ;
     Alessandra Venditti
 arXiv:2302.08506, arXiv:2306.09403, arXiv:2407.18294, Sklansky et al. (in prep)
-
-Two families of functions:
-
-  X-ray / Lyman-alpha SEDs (used in 21cm calculations)
-  ---------------------------------------------------------
-  SED_XRAY      – power-law X-ray SED, normalized so ∫ E·SED(E) dE = 1
-                  over [E0_xray, Emax_xray]. Returns photon number spectrum. 
-                  E*SED is the power-law with index alpha_xray, so the output is divided by 1/E at the end to return number). 
-  SED_LyA       – Lyman-alpha continuum SED, normalized so ∫ SED(ν) dν = 1 (as opposed as E*SED, what was for Xrays).
-                  over [νLyA, νLyCont]. Returns number per unit frequency.
-
-  Green's functions (used in UVLFs, Hα/UV ratios, etc.)
-  ---------------------------------------------------------
-  Greens_function_LUV        – UV luminosity per unit SFR as a function of
-                               stellar population age. Integrate against SFR(t)
-                               to get instantaneous L_UV.
-  Greens_function_LUV_Short  – Same, windowed to ages < t_cut_LUV_short.
-  Greens_function_LUV_Long   – Same, windowed to ages > t_cut_LUV_short.
-  Greens_function_LHa        – Hα luminosity Green's function, analogous to LUV.
-
-Supported SED stellar-population models (AstroParams.SEDMODEL):
-  'bagpipes', 'BPASS', 'BPASS_binaries'
-
-Population flags (pop):
-  2 → Pop II stars
-  3 → Pop III stars
 """
 
 
 import numpy as np 
 from . import constants
-
-
 
 
 def SED_XRAY(AstroParams, En, pop = 0): #pop set to zero as default, but it must be set to either 2 or 3

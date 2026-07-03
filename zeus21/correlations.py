@@ -5,12 +5,12 @@ Holds two classes:
     Power_Spectra (which will compute and hold the 21-cm power spectrum and power for derived quantities like xa, Tk, etc.).
 
 Authors: zeus21 v2 collaboration - June 2026
-    Emily Bregou
-    Hector Afonso G. Cruz
-    Sarah Libanore
-    Julian B. Muñoz
-    Yonny Sklansky
-    Emilie Thélie
+    Emily Bregou ;
+    Hector Afonso G. Cruz ;
+    Sarah Libanore ;
+    Julian B. Muñoz ;
+    Yonny Sklansky ;
+    Emilie Thélie ;
     Alessandra Venditti
 arXiv:2302.08506, arXiv:2306.09403, arXiv:2407.18294, Sklansky et al. (in prep)
 """
