@@ -685,8 +685,11 @@ class T21_maps:
             self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, self.input_z, **vars(self.ReioMaps_config))
 
             ### include ionization
-            if self.ReioMaps_config.COMPUTE_PARTIAL_AND_MASSWEIGHTED:
-                   self.xHI = (1. - self.ReioMaps.ion_field_massweighted_allz)
+            if self.ReioMaps_config.COMPUTE_MASSWEIGHTED:
+                if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
+                    self.xHI = (1. - self.ReioMaps.ion_field_partial_massweighted_allz)
+                else:
+                    self.xHI = (1. - self.ReioMaps.ion_field_massweighted_allz)
             else:
                 if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
                     self.xHI = (1. - self.ReioMaps.ion_field_partial_allz)
