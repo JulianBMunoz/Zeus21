@@ -611,6 +611,8 @@ class T21_maps:
     # boxes
     density: np.ndarray = _field(init=False)
     xHI: np.ndarray = _field(init=False)
+    xHI_massweighted: np.ndarray = _field(init=False)
+    tau: np.ndarray = _field(init=False)
     T21_lin: np.ndarray = _field(init=False)
     T21_NL: np.ndarray = _field(init=False)
     T21: np.ndarray = _field(init=False)
@@ -682,20 +684,21 @@ class T21_maps:
             self.ReioMaps_config.input_boxlength = self.input_boxlength
             self.ReioMaps_config.ncells = self.ncells
             self.ReioMaps_config.seed = self.seed
-            self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, self.input_z, **vars(self.ReioMaps_config))
+            self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, CoeffStructure.zintegral, **vars(self.ReioMaps_config))
 
             ### include ionization
-            if self.ReioMaps_config.COMPUTE_MASSWEIGHTED:
-                if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
-                    self.xHI = (1. - self.ReioMaps.ion_field_partial_massweighted_allz)
-                else:
-                    self.xHI = (1. - self.ReioMaps.ion_field_massweighted_allz)
+            if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
+                self.xHI_massweighted = (1. - self.ReioMaps.ion_field_partial_massweighted_allz[_iz])
             else:
-                if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
-                    self.xHI = (1. - self.ReioMaps.ion_field_partial_allz)
-                else:
-                    self.xHI = (1. - self.ReioMaps.ion_field_allz)
-        
+                self.xHI_massweighted = (1. - self.ReioMaps.ion_field_massweighted_allz[_iz])
+            # !!! COMPUTE TAU
+            self.tau = CoeffStructure.tau_reio(CosmoParams, CoeffStructure.zintegral, self.xHI_massweighted)
+
+            if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
+                self.xHI = (1. - self.ReioMaps.ion_field_partial_allz[_iz])
+            else:
+                self.xHI = (1. - self.ReioMaps.ion_field_allz[_iz])
+
             self.T21 *= self.xHI
 
         self.T21[np.isnan(self.T21)] = 0.
