@@ -690,9 +690,9 @@ class T21_maps:
 
                 ### include ionization
                 if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
-                    self.xHI_massweighted = (1. - self.ReioMaps.ion_field_partial_massweighted_allz[_iz])
+                    self.xHI_massweighted = (1. - self.ReioMaps.ion_frac_partial_massweighted[_iz])
                 else:
-                    self.xHI_massweighted = (1. - self.ReioMaps.ion_field_massweighted_allz[_iz])
+                    self.xHI_massweighted = (1. - self.ReioMaps.ion_frac_massweighted[_iz])
                 # !!! COMPUTE TAU
                 self.tau = CoeffStructure.tau_reio(CosmoParams, CoeffStructure.zintegral, self.xHI_massweighted)
 
