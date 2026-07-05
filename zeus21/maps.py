@@ -601,6 +601,7 @@ class T21_maps:
 
     # flag
     USE_xHII_MAPS: bool = _field(default=True)
+    COMPUTE_TAU: bool = _field(default=False)
 
     # box params
     input_boxlength: float = _field(default=300.)
@@ -684,20 +685,28 @@ class T21_maps:
             self.ReioMaps_config.input_boxlength = self.input_boxlength
             self.ReioMaps_config.ncells = self.ncells
             self.ReioMaps_config.seed = self.seed
-            self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, CoeffStructure.zintegral, **vars(self.ReioMaps_config))
+            if self.COMPUTE_TAU:
+                self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, CoeffStructure.zintegral, **vars(self.ReioMaps_config))
 
-            ### include ionization
-            if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
-                self.xHI_massweighted = (1. - self.ReioMaps.ion_field_partial_massweighted_allz[_iz])
-            else:
-                self.xHI_massweighted = (1. - self.ReioMaps.ion_field_massweighted_allz[_iz])
-            # !!! COMPUTE TAU
-            self.tau = CoeffStructure.tau_reio(CosmoParams, CoeffStructure.zintegral, self.xHI_massweighted)
+                ### include ionization
+                if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
+                    self.xHI_massweighted = (1. - self.ReioMaps.ion_field_partial_massweighted_allz[_iz])
+                else:
+                    self.xHI_massweighted = (1. - self.ReioMaps.ion_field_massweighted_allz[_iz])
+                # !!! COMPUTE TAU
+                self.tau = CoeffStructure.tau_reio(CosmoParams, CoeffStructure.zintegral, self.xHI_massweighted)
 
-            if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
-                self.xHI = (1. - self.ReioMaps.ion_field_partial_allz[_iz])
+                if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
+                    self.xHI = (1. - self.ReioMaps.ion_field_partial_allz[_iz])
+                else:
+                    self.xHI = (1. - self.ReioMaps.ion_field_allz[_iz])
+
             else:
-                self.xHI = (1. - self.ReioMaps.ion_field_allz[_iz])
+                self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, self.input_z, **vars(self.ReioMaps_config))
+                if self.ReioMaps_config.COMPUTE_PARTIAL_IONIZATIONS:
+                    self.xHI = (1. - self.ReioMaps.ion_field_partial_allz)
+                else:
+                    self.xHI = (1. - self.ReioMaps.ion_field_allz)
 
             self.T21 *= self.xHI
 
