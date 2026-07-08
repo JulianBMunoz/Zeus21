@@ -152,7 +152,7 @@ def test_compute_LFbias_binned_from_SFRlist():
                                                  zcenter_test, zwidth_test, MUVcenters_test, MUVwidths_test,  
                                                  kappaUV_test, sigmaUV_test, renormalize_L=True,  
                                                  which_band="UV", include_dust=DUST_FLAG,
-                                                 computeLF=True, computeBias=False)["LF"]
+                                                 computeLF=True, computeBias=False).LF
     
     # Check dimensions
     assert UVLF.shape == (3,)
@@ -167,24 +167,24 @@ def test_compute_LFbias_binned_from_SFRlist():
 
 
     # Test RETURNBIAS flag
-    bias = LF.compute_LFbias_binned_from_SFRlist(SFR_test, HMFintclass, LFParams,
+    bias_num = LF.compute_LFbias_binned_from_SFRlist(SFR_test, HMFintclass, LFParams,
                                                  zcenter_test, zwidth_test, MUVcenters_test, MUVwidths_test,  
                                                  kappaUV_test, sigmaUV_test, renormalize_L=True,  
                                                  which_band="UV", include_dust=DUST_FLAG,
-                                                 computeLF=False, computeBias=True)["bias"]
+                                                 computeLF=False, computeBias=True).bias_num
     
     # Check dimensions
-    assert bias.shape == (3,)
+    assert bias_num.shape == (3,)
     
     # Check that biases are positive
-    assert np.all(bias >= 0.0)
+    assert np.all(bias_num >= 0.0)
     
     # Test without dust correction
     UVLF_nodust = LF.compute_LFbias_binned_from_SFRlist(SFR_test, HMFintclass, LFParams,
                                                  zcenter_test, zwidth_test, MUVcenters_test, MUVwidths_test,  
                                                  kappaUV_test, sigmaUV_test, renormalize_L=True,  
                                                  which_band="UV", include_dust=False,
-                                                 computeLF=True, computeBias=False)["LF"]
+                                                 computeLF=True, computeBias=False).LF
     
     # Check dimensions
     assert UVLF_nodust.shape == (3,)

@@ -26,6 +26,164 @@ from .bursty_sfh import SFH_class
 from .z21_utilities import pdf_fft_convolution, pdf_log_transform, normal_pdf, lognormal_pdf, sigma_log10, mean_log10
 
 
+class LFbias_band_outputs:  # AV: new output class grouping population binned outputs for a given band (as well as corresponding x bins), functionally replacing old compute_LFbias_binned method in the LF_class init
+    """
+    Output container for binned luminosity-function and bias results in one band.
+
+    This class groups the luminosity-function outputs for a single observable band, either UV or Halpha. 
+    It stores the binning information for the selected band and the requested population components.
+
+    Parameters
+    ----------
+    LF_Init : LF_class
+        Parent LF object used to compute population-level LF and bias outputs.
+    CosmoParams : Cosmo_Parameters
+    AstroParams : Astro_Parameters
+    HMFinterp : HMF_interpolator
+    LFParams : LF_Parameters
+    which_band : {"UV", "Ha"}
+        Which LF band to compute. 
+        "UV" uses ``LFParams.MUVcenters`` and ``LFParams.MUVwidths``; 
+        "Ha" uses ``LFParams.log10LHacenters`` and ``LFParams.log10LHawidths``.
+    vCB : float, None or False, optional
+        Baryon-CDM relative streaming velocity used for Pop III SFR feedback. 
+        Only relevant for Pop III calculations.
+    J21LW_interp : interpolator, None or False, optional
+        LW background interpolator used for Pop III SFR feedback.
+        Only relevant for Pop III calculations.
+
+    Attributes
+    ----------
+    bin_centers : array
+        Centers of the LF bins for the selected band.
+    bin_widths : array
+        Widths of the LF bins for the selected band.
+    pop2 : LFbias_core_output or None
+        Pop II LF/bias output, if requested.
+    pop3 : LFbias_core_output or None
+        Pop III LF/bias output, if requested.
+    tot : LFbias_core_output or None
+        Total LF/bias output, if requested. 
+    """
+
+    def __init__(self, LF_Init, CosmoParams, AstroParams, HMFinterp, LFParams, which_band, vCB=None, J21LW_interp=None):
+
+        if which_band == "UV":
+            self.bin_centers = LFParams.MUVcenters
+            self.bin_widths = LFParams.MUVwidths
+        elif which_band == "Ha":
+            self.bin_centers = LFParams.log10LHacenters
+            self.bin_widths = LFParams.log10LHawidths
+        else:
+            raise ValueError("Only UV and Ha LF can be computed.")
+        
+        
+        self.pop2 = None
+        self.pop3 = None
+        self.tot = None
+        
+        if not LFParams.SKIP_POPII:
+            self.pop2 = LF_Init.compute_pop_LFbias_binned(CosmoParams, AstroParams, HMFinterp, LFParams, which_band, 2)
+
+        if not LFParams.SKIP_POPIII:
+            if not AstroParams.USE_POPIII:
+                raise ValueError("Attempting to compute Pop III LF/bias with AstroParams.USE_POPIII=False.")
+            self.pop3 = LF_Init.compute_pop_LFbias_binned(CosmoParams, AstroParams, HMFinterp, LFParams, which_band, 3, vCB, J21LW_interp)  # Note that vCB and LW are only needed for Pop III
+
+        if not LFParams.SKIP_TOT:
+            available_pops = [
+                pop for pop in (self.pop2, self.pop3)
+                if pop is not None
+            ]
+            if len(available_pops) == 0:
+                raise ValueError("Cannot compute total LF/bias because no population output has been computed.")
+            elif len(available_pops) == 1:
+                self.tot = available_pops[0]  # Note that this should avoid duplication, as when only one of the populations is computed this is just an alias to that population, avoiding memory wastes
+            else:
+                self.tot = available_pops[0] + available_pops[1]
+
+
+class LFbias_core_output:  # AV: new output class grouping LF and bias output, functionally replacing the old dictionary logic resulting from the core computation in compute_LFbias_binned_from_avgsigma
+    """
+    Output container for a single LF/bias component.
+
+    This class stores the luminosity-function output and the corresponding bias numerator for a single component. 
+
+    Parameters
+    ----------
+    LF : array or None, optional
+        Binned luminosity function, when computed.
+    bias_num : array or None, optional
+        Numerator of the LF-weighted halo bias, when computed.
+
+    Attributes
+    ----------
+    LF : array or None
+        Binned luminosity function.
+    bias_num : array or None
+        Numerator of the LF-weighted halo bias.
+
+    Properties
+    ----------
+    bias : array
+        LF-normalized average bias, computed as ``bias_num / LF``. 
+        This property requires both ``LF`` and ``bias_num`` to be available.
+
+    Notes
+    -----
+    Adding two ``LFbias_outputs`` objects returns a new ``LFbias_outputs``
+    object whose available fields are the sum of the corresponding fields.
+    This is used to build total outputs from population-level outputs.
+    """
+
+
+    def __init__(self, LF=None, bias_num=None):
+
+        self.LF = LF
+        self.bias_num = bias_num
+    
+
+    @property
+    def bias(self):  # AV: this now also allows to return the normalized bias directly; previous "bias" quantity renamed to "bias_num" for clarity
+        """
+        Bias normalized by the LF.
+        The raw 'bias' returned by the LF machinery is bias_num = b * LF.
+        """
+        if self.LF is None:
+            raise ValueError("Cannot compute normalized bias, because corresponding LF is not computed.")
+    
+        if self.bias_num is None:
+            raise ValueError("Cannot compute normalized bias, because bias_num is not computed.")    
+
+        return self.bias_num/self.LF
+    
+    
+    def __add__(self, other):
+        """
+        Returns a new ``LFbias_outputs`` object whose available fields are the sum of the corresponding fields.
+        """
+
+        LF = None
+        bias_num = None
+
+        if self.LF is not None and other.LF is not None:
+            LF = self.LF + other.LF
+        elif self.LF is None and other.LF is None:
+            LF = None
+        else:
+            raise ValueError("Cannot sum population outputs: LF is present only in one population.")
+
+        if self.bias_num is not None and other.bias_num is not None:
+            bias_num = self.bias_num + other.bias_num
+        elif self.bias_num is None and other.bias_num is None:
+            bias_num = None
+        else:
+            raise ValueError("Cannot sum population outputs: bias_num is present only in one population.")
+
+        return LFbias_core_output(LF, bias_num)
+
+
+
 class LF_class:
     """
     Compute all quantities and methods associated with luminosity functions 
@@ -70,14 +228,10 @@ class LF_class:
     biasM : array
         Tinker halo bias evaluated at the redshift samples used for the LF bin.
         Only defined when bias is requested as an output in ``LFParams``.
-    UVLFbias_outputs : dict
-        UVLF output nested dictionary, when requested as in ``LFParams``.
-        Possible top-level keys are "tot", "popII", and "popIII".
-        Each component can contain "LF" and/or "bias".
-    HaLFbias_outputs : dict
-        Halpha LF output nested dictionary, when requested as in ``LFParams``.
-        Possible top-level keys are "tot", "popII", and "popIII" for different population types.
-        Each component can contain "LF" and/or "bias" (with "bias" the numerator of the HMF-averaged halo bias, to be normalized by the LF to recover average bias).
+    UV : LFbias_band_outputs
+        UV luminosity-function and bias output containter object, when requested by ``LFParams.FLAG_COMPUTE_UVLF``.
+    Ha : LFbias_band_outputs
+        Halpha luminosity-function and bias output container object, when requested by ``LFParams.FLAG_COMPUTE_HaLF``.
     """
 
     def __init__(self, UserParams, CosmoParams, AstroParams, HMFinterp, LFParams, z_Init=None, SFRD_Init=None, SFH_Init=None, vCB=None, J21LW_interp=None):
@@ -126,11 +280,100 @@ class LF_class:
         
         # Compute UVLF/bias if requested and save outputs
         if LFParams.FLAG_COMPUTE_UVLF:
-            self.UVLFbias_outputs = self.compute_LFbias_binned(CosmoParams, AstroParams, HMFinterp, LFParams, "UV", vCB, J21LW_interp)
+            self.UV = LFbias_band_outputs(self, CosmoParams, AstroParams, HMFinterp, LFParams, "UV", vCB, J21LW_interp)  # AV: changed delegating to new outputs classes instead of the old compute_LFbias_binned method, same for HaLF outputs
 
         # Compute LF/bias if requested and save outputs
         if LFParams.FLAG_COMPUTE_HaLF:
-            self.HaLFbias_outputs = self.compute_LFbias_binned(CosmoParams, AstroParams, HMFinterp, LFParams, "Ha", vCB, J21LW_interp)
+            self.Ha = LFbias_band_outputs(self, CosmoParams, AstroParams, HMFinterp, LFParams, "Ha", vCB, J21LW_interp)
+
+
+    def __getattr__(self, name):
+        """
+        Provide optional flat aliases for LF and bias outputs, without having to specify which output class they come from.
+        Supported aliases delegated to _parse_flat_LFbias_name.
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute to get
+
+        Returns
+        -------
+        array
+            Requested LF or normalized bias array, if field present, or raises an AttributeError.
+        """
+        # This method is called by Python only when normal attribute lookup fails. Added by AV, mimickingIt mimics the user-facing behavior of ``get_T21_coefficients.__getattr__``, where selected quantities stored in internal objects can be accessed from the main output object. However, here the delegation is intentionally more limited: only explicitly supported LF/bias aliases are parsed
+
+        # Try to interpret the missing attribute name as one of the supported flat LF/bias aliases, and convert into corresponding nested path, e.g. "UVLF_tot" -> ("UV", "tot", "LF")
+        parsed = self._parse_flat_LFbias_name(name) 
+        if parsed is None:
+            raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")    
+        band_attr, component_attr, quantity_attr = parsed
+
+        # Retrieve the band output object, e.g. self.UV or self.Ha if found
+        # NOTE: We use self.__dict__.get(...) rather than getattr(self, band_attr), because getattr could call __getattr__ again if the band was not created, leading to unnecessary recursion.
+        band_output = self.__dict__.get(band_attr, None)
+        if band_output is None:
+            raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")
+
+        # Retrieve the population component from the band output, e.g. self.UV.pop2, self.UV.pop3, self.UV.tot, if found
+        component_output = getattr(band_output, component_attr, None)
+        if component_output is None:
+            raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")
+
+        # Retrieve the requested quantity from the component, e.g. .LF, .bias_num or .bias, if found
+        return getattr(component_output, quantity_attr)
+        
+    @staticmethod
+    def _parse_flat_LFbias_name(name):
+        """
+        Parse flat LF/bias aliases into nested output paths.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name requested on the ``LF_class`` instance
+
+        Returns
+        -------
+        tuple or None
+            ``(band_attr, component_attr, quantity_attr)`` if ``name`` matches a supported alias.
+
+            Examples:
+                ``"UVLF_tot"`` returns ``("UV", "tot", "LF")``.
+                ``"UVbias_pop2"`` returns ``("UV", "pop2", "bias")``.
+                ``"HaLF_pop3"`` returns ``("Ha", "pop3", "LF")``.
+        """
+        # AV: New helper translating user-facing flat names into the corresponding internal attribute path used by ``LF_class``. It is intentionally strict: only known prefixes and known component names are accepted. This keeps the ``__getattr__`` behavior close in spirit to ``get_T21_coefficients``, but avoids making arbitrary ambiguous quantities available at the top level.
+
+        # Map of supported aliases
+        FLAT_LFBIAS_ALIASES = {
+            "UVLF_pop2": ("UV", "pop2", "LF"),
+            "UVLF_pop3": ("UV", "pop3", "LF"),
+            "UVLF_tot":  ("UV", "tot",  "LF"),
+
+            "UVbias_num_pop2": ("UV", "pop2", "bias_num"),
+            "UVbias_num_pop3": ("UV", "pop3", "bias_num"),
+            "UVbias_num_tot":  ("UV", "tot",  "bias_num"),
+
+            "UVbias_pop2": ("UV", "pop2", "bias"),
+            "UVbias_pop3": ("UV", "pop3", "bias"),
+            "UVbias_tot":  ("UV", "tot",  "bias"),
+
+            "HaLF_pop2": ("Ha", "pop2", "LF"),
+            "HaLF_pop3": ("Ha", "pop3", "LF"),
+            "HaLF_tot":  ("Ha", "tot",  "LF"),
+
+            "Habias_num_pop2": ("Ha", "pop2", "bias_num"),
+            "Habias_num_pop3": ("Ha", "pop3", "bias_num"),
+            "Habias_num_tot":  ("Ha", "tot",  "bias_num"),
+
+            "Habias_pop2": ("Ha", "pop2", "bias"),
+            "Habias_pop3": ("Ha", "pop3", "bias"),
+            "Habias_tot":  ("Ha", "tot",  "bias"),
+        }
+
+        return FLAT_LFBIAS_ALIASES.get(name, None)
 
 
     ### Luminosity to log-luminosity/magnitude convert functions and vice versa
@@ -283,70 +526,7 @@ class LF_class:
         # Replace "bad values" in return
         return np.where(np.isfinite(logLormag), logLormag, bad_value_fix)
 
-
-
-    def compute_LFbias_binned(self, CosmoParams, AstroParams, HMFinterp, LFParams, which_band, vCB=None, J21LW_interp=None):
-        """
-        Compute binned LF and/or bias for the requested band.
-
-        The method dispatches to Pop II and Pop III component calculations and optionally adds a total component. Output keys are controlled by ``LFParams.SKIP_POPII``, ``AstroParams.SKIP_POPIII`` and ``LFParams.SKIP_TOT``.
-
-        Parameters
-        ----------
-        CosmoParams : Cosmo_Parameters
-        AstroParams : Astro_Parameters
-        HMFinterp : HMF_interpolator
-        LFParams : LF_Parameters
-        which_band : {"UV", "Ha"}
-            Which LF band to compute.
-        vCB : float, None or False, optional
-            Baryon-CDM relative streaming velocity used for Pop III non-PSD SFR feedback. 
-            If None (default), cosmological mean from ``CosmoParams`` is used. 
-            False to fully disable streaming velocity feedback.
-        J21LW_interp : interpolator, None or False, optional
-            LW background interpolator as a function of redshift used for Pop III SFR feedback. 
-            If None (default), the converged background from ``SFRD_Init`` is used. 
-            False to fully disable LW feedback.
-
-        Returns
-        -------
-        outputs : dict
-            Nested dictionary with population keys and entries ``"LF"`` and/or
-            ``"bias"``. The ``"bias"`` entry is the bias numerator.
-            Possible top-level keys are "tot", "popII", and "popIII" for different population types.
-            Each component can contain "LF" and/or "bias" (with "bias" the numerator of the HMF-averaged halo bias, to be normalized by the LF to recover average bias).
-        """
-
-        outputs = {}
-
-        computePopII = not LFParams.SKIP_POPII
-        computePopIII = not LFParams.SKIP_POPIII
-        computeTot = not LFParams.SKIP_TOT
-
-        # PopII
-        if computePopII:
-            outputs["popII"] = self.compute_pop_LFbias_binned(CosmoParams, AstroParams, HMFinterp, LFParams, which_band, 2)
-
-        # PopIII
-        if computePopIII:
-            if not AstroParams.USE_POPIII:
-                raise ValueError("Attempting to compute Pop III LF/bias with AstroParams.USE_POPIII=False.")
-            outputs["popIII"] = self.compute_pop_LFbias_binned(CosmoParams, AstroParams, HMFinterp, LFParams, which_band, 3, vCB, J21LW_interp)  # Note that vCB and LW are only needed for Pop III
-
-        # Total 
-        if computeTot:
-            
-            if computePopIII and computePopII:
-                outputs["tot"] = {key: outputs["popII"][key] + outputs["popIII"][key] for key in outputs["popII"]}
-
-            elif computePopII:
-                outputs["tot"] = outputs["popII"]
-
-            elif computePopIII:
-                outputs["tot"] = outputs["popIII"]
-        
-        return outputs
-            
+         
 
     def compute_pop_LFbias_binned(self, CosmoParams, AstroParams, HMFinterp, LFParams, which_band, pop, vCB=None, J21LW_interp=None):
         """
@@ -373,8 +553,7 @@ class LF_class:
 
         Returns
         -------
-        outputs : dict
-            Dictionary containing "LF" and/or "bias" for the selected population.
+        outputs : Same output type as returned by the core method ``compute_LFbias_binned_from_avgsigma``
         """
 
         # Error if not using Pop III stars in the AstroParams but Pop III LF calculation requested
@@ -455,7 +634,7 @@ class LF_class:
                                                                           LFParams._kappaUV_III_ACH, LFParams.sigmaUV_III_ACH, LFParams.FLAG_RENORMALIZE_LUV, which_band, LFParams.DUST_FLAG_III_ACH,
                                                                           LFParams.RETURNLF, LFParams.RETURNBIAS)
 
-                    return {key: outputs_main[key] + outputs_ACH[key] for key in outputs_main}
+                    return outputs_main + outputs_ACH  # AV: updated to reflect changes in the return output of compute_LFbias_binned_from_avgsigma using the new LFbias_core_output class; now simpler, and the logic for the sum is in the output class instead, so even more independent!
 
 
                 # General case, applying population-specific LFParams
@@ -514,8 +693,7 @@ class LF_class:
 
         Returns
         -------
-        outputs : dict
-            Dictionary containing output "LF" and/or "bias", depending on selected output types.
+        outputs : Same output type as returned by the core method ``compute_LFbias_binned_from_avgsigma``.
         """
 
         if not computeLF and not computeBias:
@@ -566,8 +744,7 @@ class LF_class:
 
         Returns
         -------
-        outputs : dict
-            Dictionary containing output "LF" and/or "bias", depending on selected output types.
+        outputs : Same output type as returned by the core method ``compute_LFbias_binned_from_avgsigma``.
         """
         # TODO: check, simply refactored from previous version with no functional change
         
@@ -626,8 +803,8 @@ class LF_class:
 
         Returns
         -------
-        outputs : dict
-            Dictionary containing output "LF" and/or "bias", depending on selected output types.
+        output : LFbias_outputs
+            Output object containing LF and/or bias_num.
         """
          
         cuthi = logLcenters + logLwidths/2.
@@ -639,16 +816,18 @@ class LF_class:
    
         HMFtab = np.array([HMFinterp.HMF_int(HMFinterp.Mhtab, zcenter + dz*zwidth) for dz in self.DZ_TOINT])
 
-        outputs = {}
+        # AV: below changed to use the LFbias_output class instead of dictionaries, all the rest should stay consistent
+        LF = None
+        bias_num = None
         if computeLF:
             HMFcurr = np.sum(self.WEIGHTS_TOINT * HMFtab.T, axis=1)
-            outputs["LF"] = np.trapezoid(weights.T * HMFcurr, HMFinterp.Mhtab, axis=-1)  # TODO: check consistency without fduty
+            LF = np.trapezoid(weights.T * HMFcurr, HMFinterp.Mhtab, axis=-1)  # TODO: check consistency without fduty
         if computeBias:  # TODO: compute actual average bias, already dividing by LF here?
             halobiascurr = np.sum(self.WEIGHTS_TOINT * HMFtab.T * self.biasM.T, axis=1)
-            outputs["bias"] = np.trapezoid(weights.T * halobiascurr, HMFinterp.Mhtab, axis=-1)  # TODO: check consistency without fduty
+            bias_num = np.trapezoid(weights.T * halobiascurr, HMFinterp.Mhtab, axis=-1)  # TODO: check consistency without fduty
 
-        return outputs
-        
+        return LFbias_core_output(LF, bias_num)
+            
 
 
     #####Here the dust attenuation
