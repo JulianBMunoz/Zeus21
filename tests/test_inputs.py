@@ -80,29 +80,3 @@ def test_inputs():
     assert(AstroParams_21cmfast.fstar10 == pytest.approx(AstroParams_21cmfast.epsstar) )
     assert( 0.0 <= AstroParams.clumping <= 10.0 )
     assert( 0.0 <= AstroParams_21cmfast.clumping <= 10.0 )
-
-
-
-    #test Pop II Xray SED
-    Energylisttest = np.logspace(2,np.log10(AstroParams.Emax_xray_norm),100)
-    #SEDXtab_test = zeus21.SED_XRAY(Energylisttest, 2) #same in both models
-    #normalization_XraySED = np.trapezoid(Energylisttest * SEDXtab_test,Energylisttest)
-    #assert( normalization_XraySED == pytest.approx(1.0, 0.05) ) #5% is enough here
-    
-    #test Pop III Xray SED
-    #SEDXtab_test = zeus21.SED_XRAY(Energylisttest, 3) #same in both models
-    #normalization_XraySED = np.trapezoid(Energylisttest * SEDXtab_test,Energylisttest)
-    #assert( normalization_XraySED == pytest.approx(1.0, 0.05) ) #5% is enough here
-
-
-    #test Pop II LyA SED
-    nulisttest = np.linspace(zeus21.constants.freqLyA, zeus21.constants.freqLyCont, 100)
-    #SEDLtab_test = zeus21.SED_LyA(nulisttest, 2) #same in both models
-    #normalization_LyASED = np.trapezoid(SEDLtab_test,nulisttest)
-    #assert( normalization_LyASED == pytest.approx(1.0, 0.05) ) #5% is enough here
-    
-    #test Pop III LyA SED
-    nulisttest = np.linspace(zeus21.constants.freqLyA, zeus21.constants.freqLyCont, 100)
-    #SEDLtab_test = zeus21.SED_LyA(nulisttest, 3) #same in both models
-    #normalization_LyASED = np.trapezoid(SEDLtab_test,nulisttest)
-    #assert( normalization_LyASED == pytest.approx(1.0, 0.05) ) #5% is enough here
