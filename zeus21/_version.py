@@ -30,7 +30,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent      # <repo>/<package>
 _ROOT = _HERE.parent                         # <repo>
-_PACKAGE = _HERE.name                        # "zeus21" or "oLIMpus"
+_PACKAGE = _HERE.name                        
 _VERSION_FILE = _ROOT / "VERSION"
 
 # written by setup.py at build time; the only thing an sdist can carry.
