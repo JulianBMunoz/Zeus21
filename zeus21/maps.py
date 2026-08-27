@@ -686,6 +686,7 @@ class T21_maps:
             self.ReioMaps_config.ncells = self.ncells
             self.ReioMaps_config.seed = self.seed
             if self.COMPUTE_TAU:
+                self.ReioMaps_config.COMPUTE_MASSWEIGHTED = True
                 self.ReioMaps = reionization_maps(CosmoParams, CoeffStructure, CoeffStructure.zintegral, **vars(self.ReioMaps_config))
 
                 ### include ionization
