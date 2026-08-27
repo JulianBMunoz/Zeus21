@@ -12,6 +12,9 @@ Authors: zeus21 v2 collaboration - June 2026
 arXiv:2302.08506, arXiv:2306.09403, arXiv:2407.18294, Sklansky et al. (in prep)
 """
 
+
+print('MAAAAAAAAAAAAAAAAPS')
+
 from . import cosmology
 from . import z21_utilities
 from . import inputs
