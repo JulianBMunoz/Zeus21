@@ -15,12 +15,5 @@ from .z21_utilities import *
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) #to silence unnecessary warning in mcfit
 
-from pathlib import Path
-
-HERE = Path(__file__).resolve().parent
-
-_ns = {"__file__": str(HERE / "zeus21" / "_version.py")}
-exec((HERE / "zeus21" / "_version.py").read_text(), _ns)
-VERSION = _ns["get_version"]()
-
-print('zeus21 version ' + VERSION)
+from ._version import __version__
+print(f"zeus21 version {__version__}")
